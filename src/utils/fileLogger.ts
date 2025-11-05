@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import { UserProfile, UUID } from "../routes/users";
 
 const DATA_DIR = path.join(process.cwd(), "data"); // project-root/data
 const CSV_FILE = path.join(DATA_DIR, "messages.csv");
@@ -21,6 +22,79 @@ async function ensureCsvFile() {
   } catch {
     // File doesn't exist → create with header
     await fs.writeFile(CSV_FILE, 'timestamp,name,email,zipcode\n', "utf-8");
+  }
+}
+
+type FileTypes = "user" | "request"
+
+async function ensureFile(type: FileTypes) {
+  const filename = `${type}.json`;
+
+  try {
+    await fs.access(filename);
+  } catch (e) {
+    await fs.writeFile(filename, "{}", "utf-8");
+  }
+
+  return filename;
+}
+
+async function jsonFileToData(filename: string) {
+  try {
+    const filePath = path.join(__dirname, filename);
+    const jsonString = await fs.readFile(filePath, "utf-8");
+    const data = JSON.parse(jsonString);
+    console.log(data);
+    return data;
+  } catch (err) {
+    throw err;
+  }
+}
+
+export async function getUserFromFile(id: UUID) {
+  try {
+    await ensureDataDir();
+    const filename = await ensureFile("user");
+    const users = await jsonFileToData(filename);
+    const user = users[id];
+    return user;
+  } catch (err) {
+    console.error("Failed to get user data:", err);
+    throw err;
+  }
+}
+
+export async function writeNewUserToFile(userData: UserProfile) {
+  try {
+    await ensureDataDir();
+    const filename = await ensureFile("user");
+    const users = await jsonFileToData(filename);
+    const {id} = userData;
+    users[id] = {...userData};
+
+    await fs.writeFile(filename, JSON.stringify(users, null, 2));
+    console.log(`User ${id} was added to ${filename}`);
+
+  } catch (err) {
+    console.error("Failed to write user data:", err);
+    throw err;
+  }
+}
+
+export async function updateUserToFile(newUserData: UserProfile) {
+  try {
+    await ensureDataDir();
+    const filename = await ensureFile("user");
+    const users = await jsonFileToData(filename);
+    const {id} = newUserData;
+    users[id] = { ...users[id], ...newUserData};
+
+    await fs.writeFile(filename, JSON.stringify(users, null, 2));
+    console.log(`User ${id} was updated in ${filename}`);
+
+  } catch (err) {
+    console.error("Failed to update user data:", err);
+    throw err;
   }
 }
 
