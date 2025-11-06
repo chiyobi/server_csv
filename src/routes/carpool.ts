@@ -1,12 +1,18 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { UUID, generateUUID } from "./users";
-import { friends } from "./network";
+import { FriendProfile, friends } from "./network";
 
 const carpoolRouter = Router();
 
 type CarpoolStatus = "Pending" | "Confirmed" | "In Progress" | "Completed";
+type CarpoolId = UUID;
+type DriverProfile = {
+  id: UserId;
+  firstname: string;
+  lastname: string;
+}
 export type Carpool = {
-  id: UUID;
+  id: CarpoolId;
   purpose: string;
   from: string;
   to: string;
@@ -16,7 +22,8 @@ export type Carpool = {
   passengers: string[];
   notes: string;
   status: CarpoolStatus;
-  driver?: string;
+  driver?: DriverProfile;
+  createdBy: FriendProfile;
 }
 
 type Trip = {
@@ -31,9 +38,35 @@ type Trip = {
 type UserId = UUID;
 
 const carpools = new Map<UserId, Carpool[]>();
+const carpoolIdToUserId = new Map<CarpoolId, UserId[]>();
+const userIdToCarpoolId = new Map<UserId, CarpoolId[]>();
+
 const savedTrips = new Map<UserId, Trip[]>();
 
-// get all carpools of user
+const getSharedCarpools = (userId: UserId) => {
+  // get all shared carpools with user
+  let shared: Carpool[] = [];
+  if (friends.has(userId)) {
+    const userFriends = friends.get(userId);
+    
+    if (userFriends) {
+      const friendIds = userFriends.map(f => f.id);
+      for (let friendId of friendIds) {
+        const friendCarpools= carpools.get(friendId);
+
+        // check each of friend's carpools. If id matches a friend's carpool, it is shared.
+        if (friendCarpools) {
+          const userCarpoolIds = new Set(userIdToCarpoolId.get(userId));
+          const sharedCarpools = friendCarpools.filter(c => userCarpoolIds.has(c.id));
+          shared = shared.concat(sharedCarpools);
+        }
+      }
+    }
+  }
+  return shared;
+}
+
+// get all carpools of user and get all shared carpools with user
 carpoolRouter.get('/', async (req: Request<{}, {}, {}, {userId: UserId}>, res: Response, next: NextFunction) => {
   try {
     const { userId } = req.query;
@@ -43,7 +76,6 @@ carpoolRouter.get('/', async (req: Request<{}, {}, {}, {userId: UserId}>, res: R
     }
 
     const userCarpools = carpools.get(userId)?.slice() as Carpool[];
-    console.log(carpools.get(userId));
     
     res.json({ success: true, data: userCarpools });
   } catch (error) {
@@ -68,13 +100,24 @@ carpoolRouter.get('/trip', async (req: Request<{}, {}, {}, {userId: UserId}>, re
 carpoolRouter.delete('/', async (req: Request<{}, {}, { userId: UserId; carpoolId: UUID }>, res: Response, next: NextFunction) => {
   try {
     const { userId, carpoolId } = req.body;
-    if (carpools.has(userId)) {
-      const userCarpools = carpools.get(userId)?.slice();
-      carpools.set(userId, userCarpools?.filter((carpool) => carpool.id !== carpoolId ) as Carpool[]);
+    const allUserIdsOfCarpool = carpoolIdToUserId.get(carpoolId);
+
+    if (allUserIdsOfCarpool) {
+      for (const uId of allUserIdsOfCarpool) {
+        const uCarpools = carpools.get(uId);
+        if (uCarpools) {
+          carpools.set(uId, uCarpools.filter(c => c.id !== carpoolId));
+        }
+        if (userIdToCarpoolId.has(uId)) {
+          const carpoolIds = userIdToCarpoolId.get(uId);
+          if (carpoolIds) {
+            userIdToCarpoolId.set(userId, carpoolIds.filter(cId => cId !== carpoolId));
+          }
+        }
+      }
+      carpoolIdToUserId.delete(carpoolId);
     }
-
-    // TODO: delete this carpool from all friends carpool list
-
+    
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error });
@@ -95,23 +138,31 @@ carpoolRouter.delete('/trip', async (req: Request<{}, {}, { userId: UserId; idTo
 });
 
 // add a carpool
-carpoolRouter.post('/', async (req: Request<{}, {}, { userId: UUID, newCarpool: Carpool }>, res: Response, next: NextFunction) => {
+carpoolRouter.post('/', async (req: Request<{}, {}, { userId: UUID, newCarpool: Carpool, recipientIds: UUID[] }>, res: Response, next: NextFunction) => {
   try {
-    const { userId, newCarpool } = req.body;
+    const { userId, newCarpool, recipientIds } = req.body;
     console.log("req.body", req.body);
     if (!carpools.has(userId)) {
       carpools.set(userId, []);
     }
     const userCarpools = carpools.get(userId)?.slice();
+    const carpoolId = generateUUID();
     const carpool = {
       ...newCarpool,
-      id: generateUUID()
+      id: carpoolId
     }
 
-    // TODO: add all pending carpool to all friends' carpools
+    // if carpool was shared with friends, record new carpool into shared carpools
+    carpoolIdToUserId.set(carpoolId, recipientIds.concat([userId]));
+    for (const rId of recipientIds) {
+      const friendCarpoolIds = userIdToCarpoolId.get(rId) || [];
+      friendCarpoolIds.push(carpoolId);
+      userIdToCarpoolId.set(rId, friendCarpoolIds);
+
+      carpools.set(rId, (carpools.get(rId) || []).concat([carpool]));
+    }
     
     carpools.set(userId, userCarpools?.concat([carpool]) as Carpool[]);
-    console.log("carpool", carpools.get(userId));
 
     res.json({ success: true, data: carpool });
 
@@ -140,31 +191,71 @@ carpoolRouter.post('/trip', async (req: Request<{}, {}, { userId: UUID, newTrip:
 });
 
 // update a carpool
-carpoolRouter.put('/', async (req: Request<{}, {}, { userId: UUID, update: Carpool}>, res: Response, next: NextFunction) => {
+carpoolRouter.put('/', async (req: Request<{}, {}, { userId: UUID, update: Carpool }>, res: Response, next: NextFunction) => {
   try {
-    const { userId, update } = req.body;
-    if (!carpools.has(userId)) {
-      carpools.set(userId, []);
-    }
-    const userCarpools = carpools.get(userId)?.slice() as Carpool[];
-    let data;
-    for (let i = 0; i < userCarpools?.length; i++) {
-      const aCarpool = userCarpools[i];
-      if (aCarpool.id === update.id) {
-        data = {
-          ...aCarpool,
-          ...update
-        }
-        userCarpools[i] = data;
+
+    const {userId, update} = req.body;
+
+    const carpoolId = update.id;
+    const userCarpools = carpools.get(userId)?.slice() || [];
+    const creatorId = update.createdBy.id;
+    const creatorCarpools = carpools.get(creatorId)?.slice() || [];
+
+    const allUserIdsOfCarpool = carpoolIdToUserId.get(carpoolId);
+
+    // if status is confirmed,
+    // remove all users that are not the driver and creator from carpoolIdToUserId
+    if (update.status === "Confirmed") {
+      const relevantUserIds = allUserIdsOfCarpool?.filter(uId => uId === userId || uId === creatorId);
+      if (relevantUserIds) {
+        carpoolIdToUserId.set(carpoolId, relevantUserIds);
       }
-      break;
+
+      // remove carpoolId from all users previously associated with carpool Id
+      const nonrelevantUserIds = allUserIdsOfCarpool?.filter(uId => uId !== userId && uId !== creatorId);
+      if (nonrelevantUserIds) {
+        for (const uId of nonrelevantUserIds) {
+          const carpoolIdsOfNonrelevantUsers = userIdToCarpoolId.get(uId);
+          if (carpoolIdsOfNonrelevantUsers) {
+            userIdToCarpoolId.set(uId, carpoolIdsOfNonrelevantUsers.filter(cId => cId !== carpoolId));
+          }
+
+          const carpoolsOfNonrelevantUsers = carpools.get(uId);
+          if (carpoolsOfNonrelevantUsers) {
+            carpools.set(uId, carpoolsOfNonrelevantUsers.filter(c => c.id !== carpoolId));
+          }
+        }
+      }
     }
 
-    // TODO: remove this previously pending carpool from all friends except for confirmed friend
+    // update existing carpool, set to current user and creator
+    if (userCarpools.length) {
+      for (let i = 0; i < userCarpools.length; i++) {
+        if (userCarpools[i].id === carpoolId) {
+          userCarpools[i] = {
+            ...userCarpools[i],
+            ...update
+          }
+          break;
+        }
+      }
+      carpools.set(userId, userCarpools);
+    } 
 
-    carpools.set(userId, userCarpools);
+    if (creatorCarpools.length) {
+      for (let i = 0; i < creatorCarpools.length; i++) {
+        if (creatorCarpools[i].id === carpoolId) {
+          creatorCarpools[i] = {
+            ...creatorCarpools[i],
+            ...update
+          }
+          break;
+        }
+      }
+      carpools.set(creatorId, creatorCarpools);
+    }
 
-    res.json({ success:true, data })
+    res.json({ success:true })
     
   } catch (error) {
     res.status(500).json({ error });
