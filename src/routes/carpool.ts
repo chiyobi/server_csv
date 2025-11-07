@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { UUID, generateUUID } from "./users";
+import { UUID, generateUUID, users } from "./users";
 import { FriendProfile, friends } from "./network";
+import { emailCarpoolStatusUpdate, sendConfirmationEmail } from "../utils/fileLogger";
 
 const carpoolRouter = Router();
 
@@ -16,8 +17,8 @@ export type Carpool = {
   purpose: string;
   from: string;
   to: string;
-  date: Date;
-  time: Date;
+  date: string;
+  time: string;
   returnTrip: boolean;
   passengers: string[];
   notes: string;
@@ -146,6 +147,9 @@ carpoolRouter.delete('/trip', async (req: Request<{}, {}, { userId: UserId; idTo
 carpoolRouter.post('/', async (req: Request<{}, {}, { userId: UUID, newCarpool: Carpool, recipientIds: UUID[] }>, res: Response, next: NextFunction) => {
   try {
     const { userId, newCarpool, recipientIds } = req.body;
+
+    console.log("new carpool", newCarpool);
+
     if (!carpools.has(userId)) {
       carpools.set(userId, []);
     }
@@ -158,15 +162,27 @@ carpoolRouter.post('/', async (req: Request<{}, {}, { userId: UUID, newCarpool: 
 
     // if carpool was shared with friends, record new carpool into shared carpools
     carpoolIdToUserId.set(carpoolId, recipientIds.concat([userId]));
+    const recipientEmails = [];
     for (const rId of recipientIds) {
+      const recipient = users.get(rId);
+      if (recipient) {
+        recipientEmails.push(recipient.email);
+      }
       const friendCarpoolIds = userIdToCarpoolId.get(rId) || [];
       friendCarpoolIds.push(carpoolId);
       userIdToCarpoolId.set(rId, friendCarpoolIds);
-
       carpools.set(rId, (carpools.get(rId) || []).concat([carpool]));
     }
     
     carpools.set(userId, userCarpools?.concat([carpool]) as Carpool[]);
+
+    // send email to all recipients
+    try {
+      await emailCarpoolStatusUpdate(recipientEmails, newCarpool);
+    } catch (e) {
+      console.log("e", e);
+      throw "Could not email status update.";
+    }
 
     res.json({ success: true, data: carpool });
 
@@ -196,8 +212,8 @@ carpoolRouter.post('/trip', async (req: Request<{}, {}, { userId: UUID, newTrip:
 
 // update a carpool
 carpoolRouter.put('/', async (req: Request<{}, {}, { userId: UUID, update: Carpool }>, res: Response, next: NextFunction) => {
-  try {
 
+  try {
     const {userId, update} = req.body;
 
     const carpoolId = update.id;
@@ -206,6 +222,22 @@ carpoolRouter.put('/', async (req: Request<{}, {}, { userId: UUID, update: Carpo
     const creatorCarpools = carpools.get(creatorId)?.slice() || [];
 
     const allUserIdsOfCarpool = carpoolIdToUserId.get(carpoolId);
+
+    const recipientEmails = [];
+    if (allUserIdsOfCarpool) {
+      for (const uId of allUserIdsOfCarpool) {
+        const friend = users.get(uId);
+        if (friend) {
+          recipientEmails.push(friend.email);
+        }
+      }
+    }
+
+    try {
+      await emailCarpoolStatusUpdate(recipientEmails, update);
+    } catch (e) {
+      throw "Could not email status update."
+    }
 
     // if status is confirmed,
     // remove all users that are not the driver and creator from carpoolIdToUserId

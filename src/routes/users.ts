@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import {friends, friendRequests, FriendProfile} from './network';
 import { families } from "./family";
 import { carpoolIdToUserId, userIdToCarpoolId, carpools, deleteACarpool, Carpool } from "./carpool";
+import { getRandom128CharString, sendConfirmationEmail } from "../utils/fileLogger";
 
 const userRouter = Router();
 
@@ -29,13 +30,15 @@ export interface UserProfile {
   }
 }
 
-type User = UserProfile & { password: string; }
+type Verified = { password: string; active: boolean; };
+type User = UserProfile & Verified;
 
 export function generateUUID(): UUID {
   return uuidv4() as UUID;
 }
 
-const auth = new Map<UUID, string>();
+const tempTokens = new Map<string, UUID>();
+const auth = new Map<UUID, Verified>();
 export const users = new Map<UUID, UserProfile>();
 export const emailsToId = new Map<string, UUID>();
 
@@ -46,8 +49,17 @@ userRouter.post('/signin', async (req: Request<{}, {}, User>, res: Response, nex
     if (!emailsToId.has(email)) {  
       throw 'No account with this email.';
     }
+
     const id = emailsToId.get(email);
-    if (!id || !users.has(id) || auth.get(id) !== password) {
+    if (!id || auth.get(id)?.active === false) {
+      throw 'Account not verified.'
+    }
+
+    if (
+      !id || 
+      !users.has(id) || 
+      auth.get(id)?.password !== password
+    ) {
       throw 'Invalid credentials.'
     }
 
@@ -84,16 +96,35 @@ userRouter.post('/signin', async (req: Request<{}, {}, User>, res: Response, nex
 
 });
 
+userRouter.get('/verify', async (req: Request<{}, {}, {}, { code: string; }>, res: Response, next: NextFunction) => {
+  const {code} = req.query;
+  if (tempTokens.has(code)) {
+    const userId = tempTokens.get(code) as UUID;
+    const authStatus = auth.get(userId) as Verified;
+    auth.set(userId, { ...authStatus, active: true });
+    tempTokens.delete(code);
+  }
+  res.redirect('https://hello.goodloop.us'); 
+});
+
 userRouter.post('/new', async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
+
   const { email, password } = req.body as User;
   const id = generateUUID();
 
   try {
     if (emailsToId.has(email)) {
       throw "Email already exists. Use a different email.";
-    } else {
+    }
+
+    const code = getRandom128CharString();
+    tempTokens.set(code, id);
+    try {
+      const info = await sendConfirmationEmail(email, code);
+      // console.log("info", info);
       emailsToId.set(email, id);
-      auth.set(id, password);
+      auth.set(id, { password, active: false });
+      
       const userData = {
         id,
         email,
@@ -102,6 +133,9 @@ userRouter.post('/new', async (req: Request<{}, {}, User>, res: Response, next: 
       };
       users.set(id, userData as UserProfile);
       res.json({ success: true });
+
+    } catch (e) {
+      throw "Not a valid email."
     }
 
   } catch (error) {
@@ -130,7 +164,10 @@ userRouter.put('/password', async (req: Request<{}, {}, {userId: UUID; newPasswo
 
   try {
     if (auth.has(userId)) {
-      auth.set(userId, newPassword);
+      const updated = auth.get(userId) as Verified;
+      if (updated) {
+        auth.set(userId, { ...updated, password: newPassword });
+      }
       res.json({ success: true });
     } else {
       throw "User does not exist."
