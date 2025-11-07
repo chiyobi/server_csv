@@ -37,9 +37,9 @@ type Trip = {
 
 type UserId = UUID;
 
-const carpools = new Map<UserId, Carpool[]>();
-const carpoolIdToUserId = new Map<CarpoolId, UserId[]>();
-const userIdToCarpoolId = new Map<UserId, CarpoolId[]>();
+export const carpools = new Map<UserId, Carpool[]>();
+export const carpoolIdToUserId = new Map<CarpoolId, UserId[]>();
+export const userIdToCarpoolId = new Map<UserId, CarpoolId[]>();
 
 const savedTrips = new Map<UserId, Trip[]>();
 
@@ -96,27 +96,32 @@ carpoolRouter.get('/trip', async (req: Request<{}, {}, {}, {userId: UserId}>, re
   }
 });
 
+export const deleteACarpool = (userId: UserId, carpoolId: CarpoolId) => {
+  const allUserIdsOfCarpool = carpoolIdToUserId.get(carpoolId);
+
+  if (allUserIdsOfCarpool) {
+    for (const uId of allUserIdsOfCarpool) {
+      const uCarpools = carpools.get(uId);
+      if (uCarpools) {
+        carpools.set(uId, uCarpools.filter(c => c.id !== carpoolId));
+      }
+      if (userIdToCarpoolId.has(uId)) {
+        const carpoolIds = userIdToCarpoolId.get(uId);
+        if (carpoolIds) {
+          userIdToCarpoolId.set(userId, carpoolIds.filter(cId => cId !== carpoolId));
+        }
+      }
+    }
+    carpoolIdToUserId.delete(carpoolId);
+  }
+}
+
 // delete a carpool
 carpoolRouter.delete('/', async (req: Request<{}, {}, { userId: UserId; carpoolId: UUID }>, res: Response, next: NextFunction) => {
   try {
     const { userId, carpoolId } = req.body;
-    const allUserIdsOfCarpool = carpoolIdToUserId.get(carpoolId);
 
-    if (allUserIdsOfCarpool) {
-      for (const uId of allUserIdsOfCarpool) {
-        const uCarpools = carpools.get(uId);
-        if (uCarpools) {
-          carpools.set(uId, uCarpools.filter(c => c.id !== carpoolId));
-        }
-        if (userIdToCarpoolId.has(uId)) {
-          const carpoolIds = userIdToCarpoolId.get(uId);
-          if (carpoolIds) {
-            userIdToCarpoolId.set(userId, carpoolIds.filter(cId => cId !== carpoolId));
-          }
-        }
-      }
-      carpoolIdToUserId.delete(carpoolId);
-    }
+    deleteACarpool(userId, carpoolId);
     
     res.json({ success: true });
   } catch (error) {
@@ -141,7 +146,6 @@ carpoolRouter.delete('/trip', async (req: Request<{}, {}, { userId: UserId; idTo
 carpoolRouter.post('/', async (req: Request<{}, {}, { userId: UUID, newCarpool: Carpool, recipientIds: UUID[] }>, res: Response, next: NextFunction) => {
   try {
     const { userId, newCarpool, recipientIds } = req.body;
-    console.log("req.body", req.body);
     if (!carpools.has(userId)) {
       carpools.set(userId, []);
     }

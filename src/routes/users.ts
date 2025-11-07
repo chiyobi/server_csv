@@ -2,16 +2,17 @@ import { Router, Request, Response, NextFunction } from "express";
 import { v4 as uuidv4 } from 'uuid';
 import {friends, friendRequests, FriendProfile} from './network';
 import { families } from "./family";
+import { carpoolIdToUserId, userIdToCarpoolId, carpools, deleteACarpool, Carpool } from "./carpool";
 
 const userRouter = Router();
 
 export type UUID = string & { readonly brand: unique symbol };
+
 export interface UserProfile {
   id: UUID;
   firstname: string;
   lastname: string;
   email: string;
-  password: string;
   username: string;
   phone: string;
   gender: string;
@@ -28,14 +29,17 @@ export interface UserProfile {
   }
 }
 
+type User = UserProfile & { password: string; }
+
 export function generateUUID(): UUID {
   return uuidv4() as UUID;
 }
 
+const auth = new Map<UUID, string>();
 export const users = new Map<UUID, UserProfile>();
 export const emailsToId = new Map<string, UUID>();
 
-userRouter.post('/signin', async (req: Request<{}, {}, UserProfile>, res: Response, next: NextFunction) => {
+userRouter.post('/signin', async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
 
   try {
@@ -43,7 +47,7 @@ userRouter.post('/signin', async (req: Request<{}, {}, UserProfile>, res: Respon
       throw 'No account with this email.';
     }
     const id = emailsToId.get(email);
-    if (!id || !users.has(id) || users.get(id)?.password !== password) {
+    if (!id || !users.has(id) || auth.get(id) !== password) {
       throw 'Invalid credentials.'
     }
 
@@ -80,8 +84,8 @@ userRouter.post('/signin', async (req: Request<{}, {}, UserProfile>, res: Respon
 
 });
 
-userRouter.post('/new', async (req: Request<{}, {}, UserProfile>, res: Response, next: NextFunction) => {
-  const { email } = req.body as UserProfile;
+userRouter.post('/new', async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
+  const { email, password } = req.body as User;
   const id = generateUUID();
 
   try {
@@ -89,8 +93,14 @@ userRouter.post('/new', async (req: Request<{}, {}, UserProfile>, res: Response,
       throw "Email already exists. Use a different email.";
     } else {
       emailsToId.set(email, id);
-      const userData = { ...req.body, id };
-      users.set(id, userData);
+      auth.set(id, password);
+      const userData = {
+        id,
+        email,
+        firstname: req.body.firstname,
+        lastname: req.body.lastname
+      };
+      users.set(id, userData as UserProfile);
       res.json({ success: true });
     }
 
@@ -109,6 +119,87 @@ userRouter.put('/', async (req: Request<{}, {}, UserProfile>, res: Response, nex
       res.json({ success: true, data: updatedData });
     } else {
       throw "User no longer exists."
+    }
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+});
+
+userRouter.put('/password', async (req: Request<{}, {}, {userId: UUID; newPassword: string;}>, res: Response, next: NextFunction) => {
+  const { userId, newPassword } = req.body;
+
+  try {
+    if (auth.has(userId)) {
+      auth.set(userId, newPassword);
+      res.json({ success: true });
+    } else {
+      throw "User does not exist."
+    }
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+});
+
+userRouter.delete('/', async (req: Request<{}, {}, {userId: UUID;}>, res: Response, next: NextFunction) => {
+  const { userId } = req.body;
+
+  try {
+    const user = users.get(userId);
+    if (user) {
+      const { email } = user;
+      auth.delete(userId);
+      users.delete(userId);
+      emailsToId.delete(email);
+      families.delete(userId);
+      
+      const allCarpools = carpools.get(userId);
+      if (allCarpools) {
+        const carpoolIdsNotMadeByUser = allCarpools.filter(c => c.createdBy.id !== userId).map(c => c.id);
+        for (const cId of carpoolIdsNotMadeByUser) {
+          const userIds = carpoolIdToUserId.get(cId);
+          if (userIds) {
+            for (const uId of userIds) {
+              const carpoolsOfUId = carpools.get(uId);
+              if (carpoolsOfUId) {
+                carpools.set(uId, carpoolsOfUId.map((c) => {
+                  if (c.id === cId) {
+                    const updated = {
+                      ...c,
+                      status: "Pending",
+                    } as Carpool;
+                    delete updated.driver;
+                    return updated;
+                  }
+                  return c;
+                }))
+              }
+            }
+          }
+        }
+        
+        const allCarpoolIdsMadeByUser = allCarpools.filter(c => c.createdBy.id === userId).map(c => c.id);
+        for (const cId of allCarpoolIdsMadeByUser) {
+          deleteACarpool(userId, cId);
+        }
+      }
+
+      carpools.delete(userId);
+      userIdToCarpoolId.delete(userId);
+
+      const allFriends = friends.get(userId);
+      if (allFriends) {
+        for (const f of allFriends) {
+          friends.set(f.id, (friends.get(f.id) || []).filter(f => f.id !== userId));
+          friendRequests.set(f.id, (friendRequests.get(f.id) || []).filter(f => f.sender.id !== userId && f.recipient.id !== userId ));
+        }
+      }
+
+      friends.delete(userId);
+      friendRequests.delete(userId);
+
+      res.json({ success: true });
+    } else {
+      throw "User does not exist."
     }
   } catch (error) {
     res.status(500).json({ error });

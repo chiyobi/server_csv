@@ -32,7 +32,6 @@ networkRouter.get('/friends', async (req: Request<{}, {}, {}, {userId: UUID}>, r
     const { userId: id } = req.query;
 
     if (friends.has(id)) {
-      console.log(data);
       const currentUserFriends = friends.get(id) as FriendProfile[];
       for (const {id: friendId} of currentUserFriends) {
         if (users.has(friendId)) {
@@ -50,6 +49,7 @@ networkRouter.get('/friends', async (req: Request<{}, {}, {}, {userId: UUID}>, r
 
 // get all friend requests of user
 networkRouter.get('/friends/request', async (req: Request<{}, {}, {}, {userId: UUID}>, res: Response, next: NextFunction) => {
+
   let data = [] as FriendRequest[] | undefined;
   try {
     const { userId: id } = req.query;
@@ -109,6 +109,11 @@ networkRouter.post('/friends/request', async (req: Request<{}, {}, FriendRequest
   try {
     const { userId, friendEmail } = req.body;
 
+    const user = users.get(userId);
+    if (user && user.email === friendEmail) {
+      throw "Cannot send a friend request to yourself.";
+    }
+
     if (!emailsToId.has(friendEmail)) {
       throw "Email does not match any user."
     }
@@ -116,6 +121,24 @@ networkRouter.post('/friends/request', async (req: Request<{}, {}, FriendRequest
     const friendId = emailsToId.get(friendEmail) as UUID;
     if (!users.has(friendId)) {
       throw "User not found."
+    }
+
+    // friend request already exists
+    const currentFriendRequests = friendRequests.get(userId);
+    if (currentFriendRequests) {
+      const friendRequestItem = currentFriendRequests.filter(fr => fr.sender.email === friendEmail || fr.recipient.email === friendEmail)[0];
+      if (friendRequestItem) {
+        throw "Friend request was already sent."
+      }
+    }
+    
+    // Email is already a friend
+    const currentFriends = friends.get(userId);
+    if (currentFriends) {
+      const friendProfile = currentFriends.filter((f) => f.email === friendEmail)[0];
+      if (friendProfile) {
+        throw "They are already a friend."
+      }
     }
     
     const requestId = generateUUID();
