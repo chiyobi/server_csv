@@ -13,62 +13,46 @@ const db_1 = require("../db");
 // } from "./carpool";
 // import { getRandom128CharString, sendConfirmationEmail } from "../utils";
 const userRouter = (0, express_1.Router)();
-// userRouter.get(
-//   "/verify",
-//   async (
-//     req: Request<{}, {}, {}, { code: string }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     res.redirect("https://hello.goodloop.us");
-//   }
-// );
-// const tempTokens = new Map<string, UserId>();
-// const auth = new Map<UserId, Verified>();
-// export const users = new Map<UserId, UserProfile>();
-// export const emailsToId = new Map<string, UserId>();
-// userRouter.post(
-//   "/signin",
-//   async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
-//     const { email, password } = req.body;
-//     try {
-//       if (!emailsToId.has(email)) {
-//         throw "No account with this email.";
-//       }
-//       const id = emailsToId.get(email);
-//       if (!id || auth.get(id)?.active === false) {
-//         throw "Account not verified.";
-//       }
-//       if (!id || !users.has(id) || auth.get(id)?.password !== password) {
-//         throw "Invalid credentials.";
-//       }
-//       if (!friends.has(id)) {
-//         friends.set(id, []);
-//       }
-//       if (!friendRequests.has(id)) {
-//         friendRequests.set(id, []);
-//       }
-//       const userFriends = friends.get(id)?.slice();
-//       const userFriendRequests = friendRequests.get(id)?.slice();
-//       if (!families.has(id)) {
-//         families.set(id, []);
-//       }
-//       const data = {
-//         user: {
-//           ...users.get(id),
-//         },
-//         network: {
-//           friends: userFriends,
-//           friendRequests: userFriendRequests,
-//         },
-//         family: families.get(id)?.slice(),
-//       };
-//       res.json({ success: true, data });
-//     } catch (error) {
-//       res.status(404).json({ error });
-//     }
-//   }
-// );
+userRouter.post("/signin", async (req, res, next) => {
+    const { email, password } = req.body;
+    try {
+        if (!db_1.emailsToId.has(email)) {
+            throw "No account with this email.";
+        }
+        const id = db_1.emailsToId.get(email);
+        if (!id || db_1.auth.get(id)?.active === false) {
+            throw "Account not verified.";
+        }
+        if (!id || !db_1.users.has(id) || db_1.auth.get(id)?.password !== password) {
+            throw "Invalid credentials.";
+        }
+        if (!db_1.friends.has(id)) {
+            db_1.friends.set(id, []);
+        }
+        if (!db_1.friendRequests.has(id)) {
+            db_1.friendRequests.set(id, []);
+        }
+        const userFriends = db_1.friends.get(id)?.slice();
+        const userFriendRequests = db_1.friendRequests.get(id)?.slice();
+        if (!db_1.families.has(id)) {
+            db_1.families.set(id, []);
+        }
+        const data = {
+            user: {
+                ...db_1.users.get(id),
+            },
+            network: {
+                friends: userFriends,
+                friendRequests: userFriendRequests,
+            },
+            family: db_1.families.get(id)?.slice(),
+        };
+        res.json({ success: true, data });
+    }
+    catch (error) {
+        res.status(404).json({ error });
+    }
+});
 userRouter.get("/verify", async (req, res, next) => {
     const { code } = req.query;
     if (db_1.tempTokens.has(code)) {
