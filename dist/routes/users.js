@@ -90,7 +90,7 @@ userRouter.post("/new", async (req, res, next) => {
         res.json({ success: true });
     }
     catch (error) {
-        // res.status(500).json({ error });
+        res.status(500).json({ error });
     }
 });
 // userRouter.put(
