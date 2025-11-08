@@ -3,6 +3,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateUUID = generateUUID;
 const express_1 = require("express");
 const uuid_1 = require("uuid");
+const db_1 = require("../db");
+// import { friends, friendRequests, FriendProfile } from "./network";
+// import { families } from "./family";
 // import {
 //   carpoolIdToUserId,
 //   userIdToCarpoolId,
@@ -12,6 +15,9 @@ const uuid_1 = require("uuid");
 // } from "./carpool";
 // import { getRandom128CharString, sendConfirmationEmail } from "../utils";
 const userRouter = (0, express_1.Router)();
+console.log("families", db_1.families);
+// export type UUID = string & { readonly brand: unique symbol };
+// export type UserId = UUID;
 userRouter.get("/verify", async (req, res, next) => {
     res.redirect("https://hello.goodloop.us");
 });

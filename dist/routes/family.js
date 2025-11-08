@@ -1,7 +1,13 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.families = void 0;
-exports.families = new Map();
+// import { Router, Request, Response, NextFunction } from "express";
+// import { UUID, generateUUID } from "./users";
+// const familyRouter = Router();
+// export type FamilyMember = {
+//   id: UUID;
+//   firstname: string;
+//   lastname: string;
+// }
+// export const families = new Map<UUID, FamilyMember[]>();
 // // get all family of user
 // familyRouter.get('/', async (req: Request<{}, {}, {}, {userId: UUID}>, res: Response, next: NextFunction) => {
 //   let data = [] as FamilyMember[] | undefined;
