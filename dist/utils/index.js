@@ -3,13 +3,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getRandom128CharString = void 0;
+exports.sendConfirmationEmail = exports.getRandom128CharString = void 0;
+exports.generateUUID = generateUUID;
+const nodemailer_1 = __importDefault(require("nodemailer"));
 const crypto_1 = __importDefault(require("crypto"));
-// import { v4 as uuidv4 } from "uuid";
 // // import { Carpool } from "../db";
-// export function generateUUID() {
-//   return uuidv4();
-// }
+function generateUUID() {
+    return crypto_1.default.randomUUID();
+}
 function generateRandomString(length) {
     // crypto.randomBytes generates a buffer of random bytes.
     // The length of the buffer needs to be half of the desired string length
@@ -24,47 +25,45 @@ function generateRandomString(length) {
 }
 const getRandom128CharString = () => generateRandomString(128);
 exports.getRandom128CharString = getRandom128CharString;
-// export const sendConfirmationEmail = async (
-//   recipientEmail: string,
-//   tempCode: string
-// ) => {
-//   const transporter = nodemailer.createTransport({
-//     service: "Gmail",
-//     auth: {
-//       user: process.env.SMTP_USER,
-//       pass: process.env.SMTP_PASS,
-//     },
-//   });
-//   const mailData = {
-//     from: process.env.SMTP_USER,
-//     to: recipientEmail,
-//     subject: "Hello from Goodloop!",
-//     html: `<p>
-//       <h1>Thanks for joining the Goodloop family!</h1><br>
-//       Please verify your email by clicking the link below:<br><br>
-//       <a style="font-size: 32px; font-weight: 600; text-decoration: none !important;" href="http://192.168.0.17:3000/api/user/verify?code=${tempCode}">Verify</a>
-//     </p>`,
-//   };
-//   return transporter.sendMail(mailData);
-// };
-// const formatDateString = (date: string) => {
-//   const dateObject = new Date(date);
-//   const formattedDate = dateObject.toLocaleDateString("en-US", {
-//     month: "long",
-//     day: "numeric",
-//     year: "numeric",
-//   });
-//   return formattedDate;
-// };
-// const formatTimeString = (time: string) => {
-//   const dateObject = new Date(time);
-//   const formattedTime = dateObject.toLocaleTimeString("en-US", {
-//     hour: "numeric",
-//     minute: "numeric",
-//     hour12: true,
-//   });
-//   return formattedTime;
-// };
+const sendConfirmationEmail = async (recipientEmail, tempCode) => {
+    const transporter = nodemailer_1.default.createTransport({
+        service: "Gmail",
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+    });
+    const mailData = {
+        from: process.env.SMTP_USER,
+        to: recipientEmail,
+        subject: "Hello from Goodloop!",
+        html: `<p>
+      <h1>Thanks for joining the Goodloop family!</h1><br>
+      Please verify your email by clicking the link below:<br><br>
+      <a style="font-size: 32px; font-weight: 600; text-decoration: none !important;" href="http://192.168.0.17:3000/api/user/verify?code=${tempCode}">Verify</a>
+    </p>`,
+    };
+    return transporter.sendMail(mailData);
+};
+exports.sendConfirmationEmail = sendConfirmationEmail;
+const formatDateString = (date) => {
+    const dateObject = new Date(date);
+    const formattedDate = dateObject.toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+    });
+    return formattedDate;
+};
+const formatTimeString = (time) => {
+    const dateObject = new Date(time);
+    const formattedTime = dateObject.toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+    });
+    return formattedTime;
+};
 // export const emailCarpoolStatusUpdate = async (
 //   recipientEmails: string[],
 //   update: Carpool
