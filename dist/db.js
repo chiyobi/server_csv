@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteACarpool = exports.savedTrips = exports.userIdToCarpoolId = exports.carpoolIdToUserId = exports.carpools = exports.groups = exports.userIdToGroupIds = exports.groupIdToUserIds = exports.friends = exports.friendRequests = exports.emailsToId = exports.users = exports.auth = exports.tempTokens = exports.families = void 0;
+exports.userDataToFriendProfile = exports.getSharedCarpools = exports.deleteACarpool = exports.savedTrips = exports.userIdToCarpoolId = exports.carpoolIdToUserId = exports.carpools = exports.groups = exports.userIdToGroupIds = exports.groupIdToUserIds = exports.friends = exports.friendRequests = exports.emailsToId = exports.users = exports.auth = exports.tempTokens = exports.families = void 0;
 exports.families = new Map();
 exports.tempTokens = new Map();
 exports.auth = new Map();
@@ -34,3 +34,39 @@ const deleteACarpool = (userId, carpoolId) => {
     }
 };
 exports.deleteACarpool = deleteACarpool;
+const getSharedCarpools = (userId) => {
+    // get all shared carpools with user
+    let shared = [];
+    if (exports.friends.has(userId)) {
+        const userFriends = exports.friends.get(userId);
+        if (userFriends) {
+            const friendIds = userFriends.map((f) => f.id);
+            for (let friendId of friendIds) {
+                const friendCarpools = exports.carpools.get(friendId);
+                // check each of friend's carpools. If id matches a friend's carpool, it is shared.
+                if (friendCarpools) {
+                    const userCarpoolIds = new Set(exports.userIdToCarpoolId.get(userId));
+                    const sharedCarpools = friendCarpools.filter((c) => userCarpoolIds.has(c.id));
+                    shared = shared.concat(sharedCarpools);
+                }
+            }
+        }
+    }
+    return shared;
+};
+exports.getSharedCarpools = getSharedCarpools;
+const userDataToFriendProfile = (userData) => {
+    return {
+        id: userData.id,
+        firstname: userData.firstname,
+        lastname: userData.lastname,
+        username: userData.username,
+        email: userData.email,
+        phone: userData.phone,
+        gender: userData.gender,
+        birthday: userData.birthday,
+        company: userData.company,
+        linkedIn: userData.linkedIn,
+    };
+};
+exports.userDataToFriendProfile = userDataToFriendProfile;

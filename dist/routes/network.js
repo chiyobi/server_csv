@@ -1,5 +1,6 @@
 "use strict";
-// import { Router, Request, Response, NextFunction } from "express";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
 // import {
 //   UUID,
 //   users,
@@ -16,7 +17,9 @@
 //   userIdToCarpoolId,
 // } from "./carpool";
 // import { emailCarpoolStatusUpdate } from "../utils";
-// const networkRouter = Router();
+const db_1 = require("../db");
+const utils_1 = require("../utils");
+const networkRouter = (0, express_1.Router)();
 // export type FriendProfile = {
 //   id: UUID;
 //   firstname: string;
@@ -46,81 +49,61 @@
 // export const groups = new Map<GroupId, Group>();
 // export const friendRequests = new Map<UUID, FriendRequest[]>();
 // export const friends = new Map<UUID, FriendProfile[]>();
-// // get all groups of user
-// networkRouter.get(
-//   "/groups",
-//   async (
-//     req: Request<{}, {}, {}, { userId: UUID }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const data: Group[] = [];
-//     try {
-//       const { userId } = req.query;
-//       const groupIds = userIdToGroupIds.get(userId) || [];
-//       if (groupIds.length) {
-//         for (let gId of groupIds) {
-//           const g = groups.get(gId);
-//           if (g) {
-//             data.push(g);
-//           }
-//         }
-//       }
-//     } catch (error) {
-//       res.status(404).json({ error });
-//     }
-//     res.json({ success: true, data });
-//   }
-// );
-// // get all friends of user
-// networkRouter.get(
-//   "/friends",
-//   async (
-//     req: Request<{}, {}, {}, { userId: UUID }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     let data: FriendProfile[] = [];
-//     try {
-//       const { userId: id } = req.query;
-//       if (friends.has(id)) {
-//         const currentUserFriends = friends.get(id) as FriendProfile[];
-//         for (const { id: friendId } of currentUserFriends) {
-//           if (users.has(friendId)) {
-//             data?.push(
-//               userDataToFriendProfile(users.get(friendId) as UserProfile)
-//             );
-//           }
-//         }
-//       }
-//     } catch (error) {
-//       res.status(404).json({ error });
-//     }
-//     res.json({ success: true, data });
-//   }
-// );
-// // get all friend requests of user
-// networkRouter.get(
-//   "/friends/request",
-//   async (
-//     req: Request<{}, {}, {}, { userId: UUID }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     let data: FriendRequest[] = [];
-//     try {
-//       const { userId: id } = req.query;
-//       if (friendRequests.has(id)) {
-//         data = friendRequests.get(id) || [];
-//       }
-//     } catch (error) {
-//       res.status(404).json({ error });
-//     }
-//     res.json({ success: true, data });
-//   }
-// );
-// // TODO: refactor delete friend
-// // delete a friend
+// get all groups of user
+networkRouter.get("/groups", async (req, res, next) => {
+    const data = [];
+    try {
+        const { userId } = req.query;
+        const groupIds = db_1.userIdToGroupIds.get(userId) || [];
+        if (groupIds.length) {
+            for (let gId of groupIds) {
+                const g = db_1.groups.get(gId);
+                if (g) {
+                    data.push(g);
+                }
+            }
+        }
+    }
+    catch (error) {
+        res.status(404).json({ error });
+    }
+    res.json({ success: true, data });
+});
+// get all friends of user
+networkRouter.get("/friends", async (req, res, next) => {
+    let data = [];
+    try {
+        const { userId: id } = req.query;
+        if (db_1.friends.has(id)) {
+            const currentUserFriends = db_1.friends.get(id);
+            for (const { id: friendId } of currentUserFriends) {
+                if (db_1.users.has(friendId)) {
+                    data?.push((0, db_1.userDataToFriendProfile)(db_1.users.get(friendId)));
+                }
+            }
+        }
+    }
+    catch (error) {
+        res.status(404).json({ error });
+    }
+    res.json({ success: true, data });
+});
+// get all friend requests of user
+networkRouter.get("/friends/request", async (req, res, next) => {
+    let data = [];
+    try {
+        const { userId: id } = req.query;
+        if (db_1.friendRequests.has(id)) {
+            data = db_1.friendRequests.get(id) || [];
+        }
+    }
+    catch (error) {
+        res.status(404).json({ error });
+    }
+    res.json({ success: true, data });
+});
+// TODO: refactor delete friend
+// delete a friend
 // networkRouter.delete(
 //   "/friends",
 //   async (
@@ -302,136 +285,93 @@
 //     }
 //   }
 // );
-// // add a friend
-// networkRouter.post(
-//   "/friends",
-//   async (
-//     req: Request<
-//       {},
-//       {},
-//       { userId: UUID; requestId: UUID; senderId: UUID; recipientId: UUID }
-//     >,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     try {
-//       const { requestId, senderId, recipientId, userId } = req.body;
-//       const recipientProfile = users.get(recipientId) as User;
-//       const senderFriends = (friends.get(senderId) || []).concat([
-//         userDataToFriendProfile(recipientProfile),
-//       ]);
-//       friends.set(senderId, senderFriends);
-//       const senderProfile = users.get(senderId) as User;
-//       const recipientFriends = (friends.get(recipientId) || []).concat([
-//         userDataToFriendProfile(senderProfile),
-//       ]);
-//       friends.set(recipientId, recipientFriends);
-//       // delete friend requests
-//       const senderFriendRequests = friendRequests
-//         .get(senderId)
-//         ?.filter((req) => req.requestId !== requestId) as FriendRequest[];
-//       const recipientFriendRequests = friendRequests
-//         .get(recipientId)
-//         ?.filter((req) => req.requestId !== requestId) as FriendRequest[];
-//       // TODO: put all pending carpools into new friend's carpool requests
-//       friendRequests.set(senderId, senderFriendRequests);
-//       friendRequests.set(recipientId, recipientFriendRequests);
-//       if (userId === senderId) {
-//         res.json({ success: true, data: recipientProfile });
-//       } else {
-//         res.json({ success: true, data: senderProfile });
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
-// // add a group
-// networkRouter.post(
-//   "/groups",
-//   async (
-//     req: Request<{}, {}, { group: Group }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     try {
-//       const { group } = req.body;
-//       const { createdById, memberIds } = group;
-//       const groupId = generateUUID();
-//       const newGroup = {
-//         ...group,
-//         id: groupId,
-//       };
-//       groups.set(groupId, newGroup);
-//       userIdToGroupIds.set(
-//         createdById,
-//         (userIdToGroupIds.get(createdById) || []).concat([groupId])
-//       );
-//       groupIdToUserIds.set(
-//         groupId,
-//         (groupIdToUserIds.get(groupId) || []).concat(memberIds)
-//       );
-//       res.json({ success: true, data: newGroup });
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
-// networkRouter.delete(
-//   "/groups",
-//   async (
-//     req: Request<{}, {}, { id: UUID; idToDelete: UUID }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     try {
-//       const { id, idToDelete } = req.body;
-//       const userGroupIds = userIdToGroupIds.get(id);
-//       if (userGroupIds?.length) {
-//         userIdToGroupIds.set(
-//           id,
-//           userGroupIds.filter((gId) => gId !== idToDelete)
-//         );
-//       }
-//       const groupUserIds = groupIdToUserIds.get(id);
-//       if (groupUserIds?.length) {
-//         groupIdToUserIds.set(
-//           idToDelete,
-//           groupUserIds.filter((uId) => uId !== id)
-//         );
-//       }
-//       res.json({ success: true });
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
+// add a friend
+networkRouter.post("/friends", async (req, res, next) => {
+    try {
+        const { requestId, senderId, recipientId, userId } = req.body;
+        const recipientProfile = db_1.users.get(recipientId);
+        const senderFriends = (db_1.friends.get(senderId) || []).concat([
+            (0, db_1.userDataToFriendProfile)(recipientProfile),
+        ]);
+        db_1.friends.set(senderId, senderFriends);
+        const senderProfile = db_1.users.get(senderId);
+        const recipientFriends = (db_1.friends.get(recipientId) || []).concat([
+            (0, db_1.userDataToFriendProfile)(senderProfile),
+        ]);
+        db_1.friends.set(recipientId, recipientFriends);
+        // delete friend requests
+        const senderFriendRequests = db_1.friendRequests
+            .get(senderId)
+            ?.filter((req) => req.requestId !== requestId);
+        const recipientFriendRequests = db_1.friendRequests
+            .get(recipientId)
+            ?.filter((req) => req.requestId !== requestId);
+        // TODO: put all pending carpools into new friend's carpool requests
+        db_1.friendRequests.set(senderId, senderFriendRequests);
+        db_1.friendRequests.set(recipientId, recipientFriendRequests);
+        if (userId === senderId) {
+            res.json({ success: true, data: recipientProfile });
+        }
+        else {
+            res.json({ success: true, data: senderProfile });
+        }
+    }
+    catch (error) {
+        res.status(500).json({ error });
+    }
+});
+// add a group
+networkRouter.post("/groups", async (req, res, next) => {
+    try {
+        const { group } = req.body;
+        const { createdById, memberIds } = group;
+        const groupId = (0, utils_1.generateUUID)();
+        const newGroup = {
+            ...group,
+            id: groupId,
+        };
+        db_1.groups.set(groupId, newGroup);
+        db_1.userIdToGroupIds.set(createdById, (db_1.userIdToGroupIds.get(createdById) || []).concat([groupId]));
+        db_1.groupIdToUserIds.set(groupId, (db_1.groupIdToUserIds.get(groupId) || []).concat(memberIds));
+        res.json({ success: true, data: newGroup });
+    }
+    catch (error) {
+        res.status(500).json({ error });
+    }
+});
+networkRouter.delete("/groups", async (req, res, next) => {
+    try {
+        const { id, idToDelete } = req.body;
+        const userGroupIds = db_1.userIdToGroupIds.get(id);
+        if (userGroupIds?.length) {
+            db_1.userIdToGroupIds.set(id, userGroupIds.filter((gId) => gId !== idToDelete));
+        }
+        const groupUserIds = db_1.groupIdToUserIds.get(id);
+        if (groupUserIds?.length) {
+            db_1.groupIdToUserIds.set(idToDelete, groupUserIds.filter((uId) => uId !== id));
+        }
+        res.json({ success: true });
+    }
+    catch (error) {
+        res.status(500).json({ error });
+    }
+});
 // // delete friend request
-// networkRouter.delete(
-//   "/friends/request",
-//   async (
-//     req: Request<
-//       {},
-//       {},
-//       { requestId: UUID; senderId: UUID; recipientId: UUID }
-//     >,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     try {
-//       const { requestId, senderId, recipientId } = req.body;
-//       const senderFriendRequests = friendRequests
-//         .get(senderId)
-//         ?.filter((req) => req.requestId !== requestId) as FriendRequest[];
-//       const recipientFriendRequests = friendRequests
-//         .get(recipientId)
-//         ?.filter((req) => req.requestId !== requestId) as FriendRequest[];
-//       friendRequests.set(senderId, senderFriendRequests);
-//       friendRequests.set(recipientId, recipientFriendRequests);
-//       res.json({ success: true });
-//     } catch (error) {
-//       res.status(404).json({ error });
-//     }
-//   }
-// );
-// export default networkRouter;
+networkRouter.delete("/friends/request", async (req, res, next) => {
+    try {
+        const { requestId, senderId, recipientId } = req.body;
+        const senderFriendRequests = db_1.friendRequests
+            .get(senderId)
+            ?.filter((req) => req.requestId !== requestId);
+        const recipientFriendRequests = db_1.friendRequests
+            .get(recipientId)
+            ?.filter((req) => req.requestId !== requestId);
+        db_1.friendRequests.set(senderId, senderFriendRequests);
+        db_1.friendRequests.set(recipientId, recipientFriendRequests);
+        res.json({ success: true });
+    }
+    catch (error) {
+        res.status(404).json({ error });
+    }
+});
+exports.default = networkRouter;

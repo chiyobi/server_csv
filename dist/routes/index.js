@@ -5,7 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const users_1 = __importDefault(require("./users"));
-// import networkRouter from "./network";
+const network_1 = __importDefault(require("./network"));
 const family_1 = __importDefault(require("./family"));
 // import carpoolRouter from "./carpool";
 const router = (0, express_1.Router)();
@@ -13,7 +13,7 @@ router.get("/", (req, res) => {
     res.json({ message: "🚀 TypeScript Node Server is running!" });
 });
 router.use("/api/user", users_1.default);
-// router.use("/api/network", networkRouter);
+router.use("/api/network", network_1.default);
 router.use("/api/family", family_1.default);
 // router.use("/api/carpool", carpoolRouter);
 exports.default = router;

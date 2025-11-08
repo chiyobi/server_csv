@@ -4,12 +4,6 @@ const express_1 = require("express");
 const db_1 = require("../db");
 const utils_1 = require("../utils");
 const familyRouter = (0, express_1.Router)();
-// export type FamilyMember = {
-//   id: UUID;
-//   firstname: string;
-//   lastname: string;
-// }
-// export const families = new Map<UUID, FamilyMember[]>();
 // get all family of user
 familyRouter.get('/', async (req, res, next) => {
     let data = [];

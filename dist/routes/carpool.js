@@ -37,28 +37,6 @@
 // export const carpoolIdToUserId = new Map<CarpoolId, UserId[]>();
 // export const userIdToCarpoolId = new Map<UserId, CarpoolId[]>();
 // const savedTrips = new Map<UserId, Trip[]>();
-// export const getSharedCarpools = (userId: UserId) => {
-//   // get all shared carpools with user
-//   let shared: Carpool[] = [];
-//   if (friends.has(userId)) {
-//     const userFriends = friends.get(userId);
-//     if (userFriends) {
-//       const friendIds = userFriends.map((f) => f.id);
-//       for (let friendId of friendIds) {
-//         const friendCarpools = carpools.get(friendId);
-//         // check each of friend's carpools. If id matches a friend's carpool, it is shared.
-//         if (friendCarpools) {
-//           const userCarpoolIds = new Set(userIdToCarpoolId.get(userId));
-//           const sharedCarpools = friendCarpools.filter((c) =>
-//             userCarpoolIds.has(c.id)
-//           );
-//           shared = shared.concat(sharedCarpools);
-//         }
-//       }
-//     }
-//   }
-//   return shared;
-// };
 // // get all carpools of user and get all shared carpools with user
 // carpoolRouter.get(
 //   "/",
