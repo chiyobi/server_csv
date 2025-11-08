@@ -2,7 +2,21 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const db_1 = require("../db");
-const uuid_1 = require("uuid");
+// import { friends, friendRequests, FriendProfile } from "./network";
+// import { families } from "./family";
+// import {
+//   carpoolIdToUserId,
+//   userIdToCarpoolId,
+//   carpools,
+//   deleteACarpool,
+//   Carpool,
+// } from "./carpool";
+// import { 
+// getRandom128CharString, 
+// generateUUID, 
+// sendConfirmationEmail
+//  } from "../utils";
+//  import { v4 as uuidv4 } from "uuid";
 const userRouter = (0, express_1.Router)();
 userRouter.post("/signin", async (req, res, next) => {
     const { email, password } = req.body;
@@ -57,7 +71,7 @@ userRouter.get("/verify", async (req, res, next) => {
 userRouter.post("/new", async (req, res, next) => {
     const { email, password } = req.body;
     // const id = generateUUID();
-    const id = (0, uuid_1.v4)();
+    const id = (0, db_1.generateUUID)();
     try {
         // if (emailsToId.has(email)) {
         //   throw "Email already exists. Use a different email.";

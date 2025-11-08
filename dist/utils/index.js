@@ -4,13 +4,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRandom128CharString = void 0;
-exports.generateUUID = generateUUID;
 const crypto_1 = __importDefault(require("crypto"));
-const uuid_1 = require("uuid");
-// import { Carpool } from "../db";
-function generateUUID() {
-    return (0, uuid_1.v4)();
-}
+// import { v4 as uuidv4 } from "uuid";
+// // import { Carpool } from "../db";
+// export function generateUUID() {
+//   return uuidv4();
+// }
 function generateRandomString(length) {
     // crypto.randomBytes generates a buffer of random bytes.
     // The length of the buffer needs to be half of the desired string length
