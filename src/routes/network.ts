@@ -1,5 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { UUID, users, emailsToId, UserProfile as User, generateUUID, UserProfile } from "./users";
+import { UUID, users, emailsToId, UserProfile as User, generateUUID, UserProfile, UserId } from "./users";
+import { carpoolIdToUserId, carpools, getSharedCarpools, userIdToCarpoolId } from "./carpool";
+import { emailCarpoolStatusUpdate } from "../utils/fileLogger";
 
 const networkRouter = Router();
 
@@ -22,12 +24,47 @@ export type FriendRequest = {
   recipient: FriendProfile;
 };
 
+export type Group = {
+  id: string;
+  name: string;
+  createdById: UUID;
+  memberIds: UUID[];
+}
+
+type GroupId = UUID;
+const groupIdToUserIds = new Map<GroupId, UserId[]>();
+const userIdToGroupIds = new Map<UserId, GroupId[]>();
+export const groups = new Map<GroupId, Group>();
+
 export const friendRequests = new Map<UUID, FriendRequest[]>();
 export const friends = new Map<UUID, FriendProfile[]>();
 
+// get all groups of user
+networkRouter.get('/groups', async (req: Request<{}, {}, {}, {userId: UUID}>, res: Response, next: NextFunction) => {
+  const data: Group[] = [];
+  try {
+    const {userId} = req.query;
+    const groupIds = userIdToGroupIds.get(userId) || [];
+    if (groupIds.length) {
+      for (let gId of groupIds) {
+        const g = groups.get(gId);
+        if (g) {
+          data.push(g);
+        }
+      }
+    }
+
+  } catch (error) {
+    res.status(404).json({ error });
+  }
+
+  res.json({ success: true, data })
+  
+});
+
 // get all friends of user
 networkRouter.get('/friends', async (req: Request<{}, {}, {}, {userId: UUID}>, res: Response, next: NextFunction) => {
-  let data = [] as FriendProfile[] | undefined;
+  let data: FriendProfile[] = [];
   try {
     const { userId: id } = req.query;
 
@@ -50,12 +87,12 @@ networkRouter.get('/friends', async (req: Request<{}, {}, {}, {userId: UUID}>, r
 // get all friend requests of user
 networkRouter.get('/friends/request', async (req: Request<{}, {}, {}, {userId: UUID}>, res: Response, next: NextFunction) => {
 
-  let data = [] as FriendRequest[] | undefined;
+  let data: FriendRequest[] = [];
   try {
     const { userId: id } = req.query;
 
     if (friendRequests.has(id)) {
-      data = friendRequests.get(id);
+      data = friendRequests.get(id) || [];
     }
 
   } catch (error) {
@@ -65,12 +102,70 @@ networkRouter.get('/friends/request', async (req: Request<{}, {}, {}, {userId: U
   res.json({ success: true, data });
 });
 
+// TODO: refactor delete friend
 // delete a friend
 networkRouter.delete('/friends', async (req: Request<{}, {}, { id: UUID; idToDelete: UUID }>, res: Response, next: NextFunction) => {
   try {
     const { id, idToDelete } = req.body;
 
-    // TODO: delete all pending carpools and active carpools from deleted friend
+    // delete all pending carpools from deleted friend, turn all confirmed carpools to pending
+    const sharedCarpoolsWithFriend = getSharedCarpools(idToDelete);
+    carpools.delete(idToDelete);
+    
+    const previouslyConfirmedCarpools = [];
+    for (const c of sharedCarpoolsWithFriend) {
+      if (c.status === "Pending") {
+        carpoolIdToUserId.set(c.id, (carpoolIdToUserId.get(c.id) || []).filter(uId => uId !== idToDelete));
+      } else {
+        previouslyConfirmedCarpools.push(c);
+      }
+    }
+
+    const recipientEmails = [];
+    const userEmail = users.get(id)?.email;
+    if (userEmail) {
+      recipientEmails.push(userEmail);
+    }
+
+    // convert confirmed to pending
+    for (const c of previouslyConfirmedCarpools) {
+      // get all creator ids of previously confirmed carpools
+      c.status = "Pending";
+      const creatorId = c.createdBy.id;
+      const friendsOfCreator = friends.get(creatorId);
+      if (friendsOfCreator?.length) {
+        // use creator ids to get current friends and add carpools to their lists
+        for (const f of friendsOfCreator) {
+          recipientEmails.push(f.email);
+          userIdToCarpoolId.set(f.id, [...(new Set((userIdToCarpoolId.get(f.id)||[]).concat([c.id]))).values()]);
+          carpools.set(f.id, [...(new Set((carpools.get(f.id)||[]).concat([c]))).values()]);
+          carpoolIdToUserId.set(c.id, [...(new Set((carpoolIdToUserId.get(c.id)||[]).concat([f.id]))).values()]);
+        }
+      }
+    }
+    
+    // send emails
+    try {
+      for (const c of previouslyConfirmedCarpools) {
+        await emailCarpoolStatusUpdate(recipientEmails, c);
+      }
+    } catch(e) {
+      throw e;
+    }
+
+    // delete friend from groups
+    const friendGroupIds = userIdToGroupIds.get(idToDelete);
+    if (friendGroupIds?.length) {
+      for (const gId of friendGroupIds) {
+        groupIdToUserIds.set(gId, (groupIdToUserIds.get(gId) || []).filter(uId => uId !== idToDelete));
+        const g = groups.get(gId);
+        if (g) {
+          const updated = {...g, memberIds: g.memberIds.filter(mId => mId !== idToDelete)};
+          groups.set(gId, updated);
+        }
+      }
+    }
+    userIdToGroupIds.delete(idToDelete);
 
     const userFriends = friends.get(id);
     const updated = userFriends?.filter(({id: friendId}) => friendId !== idToDelete) as UserProfile[];
@@ -191,6 +286,50 @@ networkRouter.post('/friends', async (req: Request<{}, {}, {userId: UUID, reques
     } else {
       res.json({ success: true, data: senderProfile });
     }
+
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+});
+
+// add a group
+networkRouter.post('/groups', async (req: Request<{}, {}, {group: Group}>, res: Response, next: NextFunction) => {
+  try {
+    const {group} = req.body;
+    const { createdById, memberIds } = group;
+
+    const groupId = generateUUID();
+    const newGroup = {
+      ...group,
+      id: groupId
+    }
+
+    groups.set(groupId, newGroup);
+    userIdToGroupIds.set(createdById, (userIdToGroupIds.get(createdById) || []).concat([groupId]));
+    groupIdToUserIds.set(groupId, (groupIdToUserIds.get(groupId) || []).concat(memberIds));
+    
+    res.json({ success: true, data: newGroup });
+
+  } catch (error) {
+    res.status(500).json({ error });
+  }
+});
+
+networkRouter.delete('/groups', async (req: Request<{}, {}, {id: UUID; idToDelete: UUID}>, res: Response, next: NextFunction) => {
+  try {
+    const {id, idToDelete} = req.body;
+
+    const userGroupIds = userIdToGroupIds.get(id);
+    if (userGroupIds?.length) {
+      userIdToGroupIds.set(id, userGroupIds.filter(gId => gId !== idToDelete));
+    }
+
+    const groupUserIds = groupIdToUserIds.get(id);
+    if (groupUserIds?.length) {
+      groupIdToUserIds.set(idToDelete, groupUserIds.filter(uId => uId !== id));
+    }
+
+    res.json({success: true});
 
   } catch (error) {
     res.status(500).json({ error });

@@ -8,9 +8,10 @@ import { getRandom128CharString, sendConfirmationEmail } from "../utils/fileLogg
 const userRouter = Router();
 
 export type UUID = string & { readonly brand: unique symbol };
+export type UserId = UUID;
 
 export interface UserProfile {
-  id: UUID;
+  id: UserId;
   firstname: string;
   lastname: string;
   email: string;
@@ -37,10 +38,10 @@ export function generateUUID(): UUID {
   return uuidv4() as UUID;
 }
 
-const tempTokens = new Map<string, UUID>();
-const auth = new Map<UUID, Verified>();
-export const users = new Map<UUID, UserProfile>();
-export const emailsToId = new Map<string, UUID>();
+const tempTokens = new Map<string, UserId>();
+const auth = new Map<UserId, Verified>();
+export const users = new Map<UserId, UserProfile>();
+export const emailsToId = new Map<string, UserId>();
 
 userRouter.post('/signin', async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
   const { email, password } = req.body;
@@ -233,6 +234,8 @@ userRouter.delete('/', async (req: Request<{}, {}, {userId: UUID;}>, res: Respon
 
       friends.delete(userId);
       friendRequests.delete(userId);
+
+      // TODO: delete user from groups
 
       res.json({ success: true });
     } else {

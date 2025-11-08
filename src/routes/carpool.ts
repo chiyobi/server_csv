@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { UUID, generateUUID, users } from "./users";
+import { UUID, UserId, generateUUID, users } from "./users";
 import { FriendProfile, friends } from "./network";
-import { emailCarpoolStatusUpdate, sendConfirmationEmail } from "../utils/fileLogger";
+import { emailCarpoolStatusUpdate } from "../utils/fileLogger";
 
 const carpoolRouter = Router();
 
@@ -36,15 +36,13 @@ type Trip = {
   notes: string;
 }
 
-type UserId = UUID;
-
 export const carpools = new Map<UserId, Carpool[]>();
 export const carpoolIdToUserId = new Map<CarpoolId, UserId[]>();
 export const userIdToCarpoolId = new Map<UserId, CarpoolId[]>();
 
 const savedTrips = new Map<UserId, Trip[]>();
 
-const getSharedCarpools = (userId: UserId) => {
+export const getSharedCarpools = (userId: UserId) => {
   // get all shared carpools with user
   let shared: Carpool[] = [];
   if (friends.has(userId)) {
