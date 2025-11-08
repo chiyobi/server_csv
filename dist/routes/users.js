@@ -54,7 +54,7 @@ userRouter.get("/verify", async (req, res, next) => {
     res.redirect("https://hello.goodloop.us");
 });
 userRouter.post("/new", async (req, res, next) => {
-    // const { email, password } = req.body as User;
+    const { email, password } = req.body;
     // const id = generateUUID();
     try {
         // if (emailsToId.has(email)) {
