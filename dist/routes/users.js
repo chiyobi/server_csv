@@ -94,50 +94,40 @@ userRouter.post("/new", async (req, res, next) => {
         res.status(500).json({ error });
     }
 });
-// userRouter.put(
-//   "/",
-//   async (
-//     req: Request<{}, {}, UserProfile>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const { id } = req.body;
-//     try {
-//       if (users.has(id)) {
-//         const updatedData = { ...users.get(id), ...req.body };
-//         users.set(id, updatedData);
-//         res.json({ success: true, data: updatedData });
-//       } else {
-//         throw "User no longer exists.";
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
-// userRouter.put(
-//   "/password",
-//   async (
-//     req: Request<{}, {}, { userId: UUID; newPassword: string }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const { userId, newPassword } = req.body;
-//     try {
-//       if (auth.has(userId)) {
-//         const updated = auth.get(userId) as Verified;
-//         if (updated) {
-//           auth.set(userId, { ...updated, password: newPassword });
-//         }
-//         res.json({ success: true });
-//       } else {
-//         throw "User does not exist.";
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
+userRouter.put("/", async (req, res, next) => {
+    const { id } = req.body;
+    try {
+        if (db_1.users.has(id)) {
+            const updatedData = { ...db_1.users.get(id), ...req.body };
+            db_1.users.set(id, updatedData);
+            res.json({ success: true, data: updatedData });
+        }
+        else {
+            throw "User no longer exists.";
+        }
+    }
+    catch (error) {
+        res.status(500).json({ error });
+    }
+});
+userRouter.put("/password", async (req, res, next) => {
+    const { userId, newPassword } = req.body;
+    try {
+        if (db_1.auth.has(userId)) {
+            const updated = db_1.auth.get(userId);
+            if (updated) {
+                db_1.auth.set(userId, { ...updated, password: newPassword });
+            }
+            res.json({ success: true });
+        }
+        else {
+            throw "User does not exist.";
+        }
+    }
+    catch (error) {
+        res.status(500).json({ error });
+    }
+});
 // userRouter.delete(
 //   "/",
 //   async (
