@@ -13,35 +13,16 @@ const db_1 = require("../db");
 // } from "./carpool";
 // import { getRandom128CharString, sendConfirmationEmail } from "../utils";
 const userRouter = (0, express_1.Router)();
-// console.log("families", families);
-// export type UUID = string & { readonly brand: unique symbol };
-// export type UserId = UUID;
-userRouter.get("/verify", async (req, res, next) => {
-    console.log("families", db_1.families);
-    res.redirect("https://hello.goodloop.us");
-});
-// export interface UserProfile {
-//   id: UserId;
-//   firstname: string;
-//   lastname: string;
-//   email: string;
-//   username: string;
-//   phone: string;
-//   gender: string;
-//   birthday: string;
-//   company: string;
-//   linkedIn: string;
-//   emergencyContactName: string;
-//   emergencyContactPhone: string;
-//   friends: UserProfile[];
-//   friendRequests: {
-//     requestId: UUID;
-//     sender: FriendProfile;
-//     recipient: FriendProfile;
-//   };
-// }
-// type Verified = { password: string; active: boolean };
-// type User = UserProfile & Verified;
+// userRouter.get(
+//   "/verify",
+//   async (
+//     req: Request<{}, {}, {}, { code: string }>,
+//     res: Response,
+//     next: NextFunction
+//   ) => {
+//     res.redirect("https://hello.goodloop.us");
+//   }
+// );
 // const tempTokens = new Map<string, UserId>();
 // const auth = new Map<UserId, Verified>();
 // export const users = new Map<UserId, UserProfile>();
@@ -88,23 +69,16 @@ userRouter.get("/verify", async (req, res, next) => {
 //     }
 //   }
 // );
-// userRouter.get(
-//   "/verify",
-//   async (
-//     req: Request<{}, {}, {}, { code: string }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const { code } = req.query;
-//     if (tempTokens.has(code)) {
-//       const userId = tempTokens.get(code) as UUID;
-//       const authStatus = auth.get(userId) as Verified;
-//       auth.set(userId, { ...authStatus, active: true });
-//       tempTokens.delete(code);
-//     }
-//     res.redirect("https://hello.goodloop.us");
-//   }
-// );
+userRouter.get("/verify", async (req, res, next) => {
+    const { code } = req.query;
+    if (db_1.tempTokens.has(code)) {
+        const userId = db_1.tempTokens.get(code);
+        const authStatus = db_1.auth.get(userId);
+        db_1.auth.set(userId, { ...authStatus, active: true });
+        db_1.tempTokens.delete(code);
+    }
+    res.redirect("https://hello.goodloop.us");
+});
 // userRouter.post(
 //   "/new",
 //   async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
