@@ -2,6 +2,16 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const db_1 = require("../db");
+// import { friends, friendRequests, FriendProfile } from "./network";
+// import { families } from "./family";
+// import {
+//   carpoolIdToUserId,
+//   userIdToCarpoolId,
+//   carpools,
+//   deleteACarpool,
+//   Carpool,
+// } from "./carpool";
+const utils_1 = require("../utils");
 const userRouter = (0, express_1.Router)();
 userRouter.post("/signin", async (req, res, next) => {
     const { email, password } = req.body;
@@ -53,38 +63,36 @@ userRouter.get("/verify", async (req, res, next) => {
     }
     res.redirect("https://hello.goodloop.us");
 });
-// userRouter.post(
-//   "/new",
-//   async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
-//     const { email, password } = req.body as User;
-//     const id = generateUUID();
-//     try {
-//       if (emailsToId.has(email)) {
-//         throw "Email already exists. Use a different email.";
-//       }
-//       const code = getRandom128CharString();
-//       tempTokens.set(code, id);
-//       try {
-//         await sendConfirmationEmail(email, code);
-//         emailsToId.set(email, id);
-//         auth.set(id, { password, active: false });
-//         const userData = {
-//           id,
-//           email,
-//           firstname: req.body.firstname,
-//           lastname: req.body.lastname,
-//         };
-//         users.set(id, userData as UserProfile);
-//         res.json({ success: true });
-//       } catch (e) {
-//         throw "Not a valid email.";
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
-// // update user data
+userRouter.post("/new", async (req, res, next) => {
+    const { email, password } = req.body;
+    const id = (0, utils_1.generateUUID)();
+    try {
+        if (db_1.emailsToId.has(email)) {
+            throw "Email already exists. Use a different email.";
+        }
+        const code = (0, utils_1.getRandom128CharString)();
+        db_1.tempTokens.set(code, id);
+        try {
+            await (0, utils_1.sendConfirmationEmail)(email, code);
+            db_1.emailsToId.set(email, id);
+            db_1.auth.set(id, { password, active: false });
+            const userData = {
+                id,
+                email,
+                firstname: req.body.firstname,
+                lastname: req.body.lastname,
+            };
+            db_1.users.set(id, userData);
+            res.json({ success: true });
+        }
+        catch (e) {
+            throw "Not a valid email.";
+        }
+    }
+    catch (error) {
+        res.status(500).json({ error });
+    }
+});
 // userRouter.put(
 //   "/",
 //   async (
