@@ -5,39 +5,6 @@ const express_1 = require("express");
 const db_1 = require("../db");
 const utils_1 = require("../utils");
 const carpoolRouter = (0, express_1.Router)();
-// type CarpoolStatus = "Pending" | "Confirmed" | "In Progress" | "Completed";
-// type CarpoolId = UUID;
-// type DriverProfile = {
-//   id: UserId;
-//   firstname: string;
-//   lastname: string;
-// };
-// export type Carpool = {
-//   id: CarpoolId;
-//   purpose: string;
-//   from: string;
-//   to: string;
-//   date: string;
-//   time: string;
-//   returnTrip: boolean;
-//   passengers: string[];
-//   notes: string;
-//   status: CarpoolStatus;
-//   driver?: DriverProfile;
-//   createdBy: FriendProfile;
-// };
-// type Trip = {
-//   id: UUID;
-//   purpose: string;
-//   from: string;
-//   to: string;
-//   passengers: string[];
-//   notes: string;
-// };
-// export const carpools = new Map<UserId, Carpool[]>();
-// export const carpoolIdToUserId = new Map<CarpoolId, UserId[]>();
-// export const userIdToCarpoolId = new Map<UserId, CarpoolId[]>();
-// const savedTrips = new Map<UserId, Trip[]>();
 // get all carpools of user and get all shared carpools with user
 carpoolRouter.get("/", async (req, res, next) => {
     try {
