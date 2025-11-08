@@ -67,30 +67,30 @@ userRouter.post("/new", async (req, res, next) => {
     const { email, password } = req.body;
     const id = (0, utils_1.generateUUID)();
     try {
-        if (db_1.emailsToId.has(email)) {
-            throw "Email already exists. Use a different email.";
-        }
-        const code = (0, utils_1.getRandom128CharString)();
-        db_1.tempTokens.set(code, id);
+        // if (emailsToId.has(email)) {
+        //   throw "Email already exists. Use a different email.";
+        // }
+        // const code = getRandom128CharString();
+        // tempTokens.set(code, id);
         try {
-            await (0, utils_1.sendConfirmationEmail)(email, code);
-            db_1.emailsToId.set(email, id);
-            db_1.auth.set(id, { password, active: false });
-            const userData = {
-                id,
-                email,
-                firstname: req.body.firstname,
-                lastname: req.body.lastname,
-            };
-            db_1.users.set(id, userData);
-            res.json({ success: true });
+            //   await sendConfirmationEmail(email, code);
+            //   emailsToId.set(email, id);
+            //   auth.set(id, { password, active: false });
+            //   const userData = {
+            //     id,
+            //     email,
+            //     firstname: req.body.firstname,
+            //     lastname: req.body.lastname,
+            //   };
+            //   users.set(id, userData as UserProfile);
         }
         catch (e) {
             throw "Not a valid email.";
         }
+        res.json({ success: true });
     }
     catch (error) {
-        res.status(500).json({ error });
+        // res.status(500).json({ error });
     }
 });
 // userRouter.put(
