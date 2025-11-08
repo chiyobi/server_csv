@@ -1,8 +1,8 @@
 import express, { Application, Request, Response, NextFunction } from "express";
 import morgan from "morgan";
 import cors from "cors";
-import { PORT } from "./src/config/env";
-import router from "./src/routes";
+import { PORT } from "./config/env";
+import router from "./routes";
 
 const app: Application = express();
 
@@ -21,8 +21,9 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Start server
-// app.listen(PORT, () => {
-//   console.log(`✅ Server running at http://localhost:${PORT}`);
-// });
+app.listen(PORT, () => {
+  console.log(`✅ Server running at http://localhost:${PORT}`);
+});
+
 export default app;
 

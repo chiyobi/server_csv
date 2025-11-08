@@ -195,8 +195,6 @@ carpoolRouter.post(
     try {
       const { userId, newCarpool, recipientIds } = req.body;
 
-      console.log("new carpool", newCarpool);
-
       if (!carpools.has(userId)) {
         carpools.set(userId, []);
       }
@@ -227,7 +225,6 @@ carpoolRouter.post(
       try {
         await emailCarpoolStatusUpdate(recipientEmails, newCarpool);
       } catch (e) {
-        console.log("e", e);
         throw "Could not email status update.";
       }
 
