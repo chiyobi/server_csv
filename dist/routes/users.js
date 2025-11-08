@@ -70,9 +70,9 @@ userRouter.get("/verify", async (req, res, next) => {
 });
 userRouter.post("/new", async (req, res, next) => {
     const { email, password } = req.body;
-    // const id = generateUUID();
+    const id = (0, db_1.generateUUID)();
     // const id = uuidv4();
-    const id = crypto.randomUUID();
+    // const id = crypto.randomUUID();
     try {
         // if (emailsToId.has(email)) {
         //   throw "Email already exists. Use a different email.";

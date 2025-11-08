@@ -19,7 +19,7 @@ exports.userIdToCarpoolId = new Map();
 exports.savedTrips = new Map();
 function generateUUID() {
     // return uuidv4();
-    // return crypto.randomUUID();
+    return crypto.randomUUID();
     // return '1';
 }
 const deleteACarpool = (userId, carpoolId) => {
