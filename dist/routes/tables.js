@@ -1,17 +1,16 @@
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.friends = exports.friendRequests = exports.groups = exports.userIdToGroupIds = exports.groupIdToUserIds = exports.emailsToId = exports.users = void 0;
-exports.generateUUID = generateUUID;
-const uuid_1 = require("uuid");
-function generateUUID() {
-    return (0, uuid_1.v4)();
-}
-const tempTokens = new Map();
-const auth = new Map();
-exports.users = new Map();
-exports.emailsToId = new Map();
-exports.groupIdToUserIds = new Map();
-exports.userIdToGroupIds = new Map();
-exports.groups = new Map();
-exports.friendRequests = new Map();
-exports.friends = new Map();
+// import { UUID } from "crypto";
+// import { v4 as uuidv4 } from "uuid";
+// import { UserId, Verified, UserProfile, FriendProfile, FriendRequest, Group, GroupId } from "./types";
+// export function generateUUID(): UUID {
+//   return uuidv4() as UUID;
+// }
+// const tempTokens = new Map<string, UserId>();
+// const auth = new Map<UserId, Verified>();
+// export const users = new Map<UserId, UserProfile>();
+// export const emailsToId = new Map<string, UserId>();
+// export const groupIdToUserIds = new Map<GroupId, UserId[]>();
+// export const userIdToGroupIds = new Map<UserId, GroupId[]>();
+// export const groups = new Map<GroupId, Group>();
+// export const friendRequests = new Map<UUID, FriendRequest[]>();
+// export const friends = new Map<UUID, FriendProfile[]>();
