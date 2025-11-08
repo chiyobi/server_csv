@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const uuid_1 = require("uuid");
 const express_1 = require("express");
 const db_1 = require("../db");
 // import { friends, friendRequests, FriendProfile } from "./network";
@@ -16,7 +17,6 @@ const db_1 = require("../db");
 // generateUUID, 
 // sendConfirmationEmail
 //  } from "../utils";
-//  import { v4 as uuidv4 } from "uuid";
 const userRouter = (0, express_1.Router)();
 userRouter.post("/signin", async (req, res, next) => {
     const { email, password } = req.body;
@@ -71,7 +71,7 @@ userRouter.get("/verify", async (req, res, next) => {
 userRouter.post("/new", async (req, res, next) => {
     const { email, password } = req.body;
     // const id = generateUUID();
-    const id = (0, db_1.generateUUID)();
+    const id = (0, uuid_1.v4)();
     try {
         // if (emailsToId.has(email)) {
         //   throw "Email already exists. Use a different email.";
