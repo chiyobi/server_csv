@@ -1,22 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
-// import {
-//   UUID,
-//   users,
-//   emailsToId,
-//   UserProfile as User,
-//   generateUUID,
-//   UserProfile,
-//   UserId,
-// } from "./users";
-// import {
-//   carpoolIdToUserId,
-//   carpools,
-//   getSharedCarpools,
-//   userIdToCarpoolId,
-// } from "./carpool";
-// import { emailCarpoolStatusUpdate } from "../utils";
 const db_1 = require("../db");
 const utils_1 = require("../utils");
 const networkRouter = (0, express_1.Router)();
