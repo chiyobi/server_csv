@@ -2,16 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const db_1 = require("../db");
-// import { friends, friendRequests, FriendProfile } from "./network";
-// import { families } from "./family";
-// import {
-//   carpoolIdToUserId,
-//   userIdToCarpoolId,
-//   carpools,
-//   deleteACarpool,
-//   Carpool,
-// } from "./carpool";
-const utils_1 = require("../utils");
 const userRouter = (0, express_1.Router)();
 userRouter.post("/signin", async (req, res, next) => {
     const { email, password } = req.body;
@@ -63,134 +53,161 @@ userRouter.get("/verify", async (req, res, next) => {
     }
     res.redirect("https://hello.goodloop.us");
 });
-userRouter.post("/new", async (req, res, next) => {
-    const { email, password } = req.body;
-    const id = (0, utils_1.generateUUID)();
-    try {
-        if (db_1.emailsToId.has(email)) {
-            throw "Email already exists. Use a different email.";
-        }
-        const code = (0, utils_1.getRandom128CharString)();
-        db_1.tempTokens.set(code, id);
-        try {
-            await (0, utils_1.sendConfirmationEmail)(email, code);
-            db_1.emailsToId.set(email, id);
-            db_1.auth.set(id, { password, active: false });
-            const userData = {
-                id,
-                email,
-                firstname: req.body.firstname,
-                lastname: req.body.lastname,
-            };
-            db_1.users.set(id, userData);
-            res.json({ success: true });
-        }
-        catch (e) {
-            throw "Not a valid email.";
-        }
-    }
-    catch (error) {
-        res.status(500).json({ error });
-    }
-});
-// update user data
-userRouter.put("/", async (req, res, next) => {
-    const { id } = req.body;
-    try {
-        if (db_1.users.has(id)) {
-            const updatedData = { ...db_1.users.get(id), ...req.body };
-            db_1.users.set(id, updatedData);
-            res.json({ success: true, data: updatedData });
-        }
-        else {
-            throw "User no longer exists.";
-        }
-    }
-    catch (error) {
-        res.status(500).json({ error });
-    }
-});
-userRouter.put("/password", async (req, res, next) => {
-    const { userId, newPassword } = req.body;
-    try {
-        if (db_1.auth.has(userId)) {
-            const updated = db_1.auth.get(userId);
-            if (updated) {
-                db_1.auth.set(userId, { ...updated, password: newPassword });
-            }
-            res.json({ success: true });
-        }
-        else {
-            throw "User does not exist.";
-        }
-    }
-    catch (error) {
-        res.status(500).json({ error });
-    }
-});
-userRouter.delete("/", async (req, res, next) => {
-    const { userId } = req.body;
-    try {
-        const user = db_1.users.get(userId);
-        if (user) {
-            const { email } = user;
-            db_1.auth.delete(userId);
-            db_1.users.delete(userId);
-            db_1.emailsToId.delete(email);
-            db_1.families.delete(userId);
-            const allCarpools = db_1.carpools.get(userId);
-            if (allCarpools) {
-                const carpoolIdsNotMadeByUser = allCarpools
-                    .filter((c) => c.createdBy.id !== userId)
-                    .map((c) => c.id);
-                for (const cId of carpoolIdsNotMadeByUser) {
-                    const userIds = db_1.carpoolIdToUserId.get(cId);
-                    if (userIds) {
-                        for (const uId of userIds) {
-                            const carpoolsOfUId = db_1.carpools.get(uId);
-                            if (carpoolsOfUId) {
-                                db_1.carpools.set(uId, carpoolsOfUId.map((c) => {
-                                    if (c.id === cId) {
-                                        const updated = {
-                                            ...c,
-                                            status: "Pending",
-                                        };
-                                        delete updated.driver;
-                                        return updated;
-                                    }
-                                    return c;
-                                }));
-                            }
-                        }
-                    }
-                }
-                const allCarpoolIdsMadeByUser = allCarpools
-                    .filter((c) => c.createdBy.id === userId)
-                    .map((c) => c.id);
-                for (const cId of allCarpoolIdsMadeByUser) {
-                    (0, db_1.deleteACarpool)(userId, cId);
-                }
-            }
-            db_1.carpools.delete(userId);
-            db_1.userIdToCarpoolId.delete(userId);
-            const allFriends = db_1.friends.get(userId);
-            if (allFriends) {
-                for (const f of allFriends) {
-                    db_1.friends.set(f.id, (db_1.friends.get(f.id) || []).filter((f) => f.id !== userId));
-                    db_1.friendRequests.set(f.id, (db_1.friendRequests.get(f.id) || []).filter((f) => f.sender.id !== userId && f.recipient.id !== userId));
-                }
-            }
-            db_1.friends.delete(userId);
-            db_1.friendRequests.delete(userId);
-            // TODO: delete user from groups
-            res.json({ success: true });
-        }
-        else {
-            throw "User does not exist.";
-        }
-    }
-    catch (error) {
-        res.status(500).json({ error });
-    }
-});
+// userRouter.post(
+//   "/new",
+//   async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
+//     const { email, password } = req.body as User;
+//     const id = generateUUID();
+//     try {
+//       if (emailsToId.has(email)) {
+//         throw "Email already exists. Use a different email.";
+//       }
+//       const code = getRandom128CharString();
+//       tempTokens.set(code, id);
+//       try {
+//         await sendConfirmationEmail(email, code);
+//         emailsToId.set(email, id);
+//         auth.set(id, { password, active: false });
+//         const userData = {
+//           id,
+//           email,
+//           firstname: req.body.firstname,
+//           lastname: req.body.lastname,
+//         };
+//         users.set(id, userData as UserProfile);
+//         res.json({ success: true });
+//       } catch (e) {
+//         throw "Not a valid email.";
+//       }
+//     } catch (error) {
+//       res.status(500).json({ error });
+//     }
+//   }
+// );
+// // update user data
+// userRouter.put(
+//   "/",
+//   async (
+//     req: Request<{}, {}, UserProfile>,
+//     res: Response,
+//     next: NextFunction
+//   ) => {
+//     const { id } = req.body;
+//     try {
+//       if (users.has(id)) {
+//         const updatedData = { ...users.get(id), ...req.body };
+//         users.set(id, updatedData);
+//         res.json({ success: true, data: updatedData });
+//       } else {
+//         throw "User no longer exists.";
+//       }
+//     } catch (error) {
+//       res.status(500).json({ error });
+//     }
+//   }
+// );
+// userRouter.put(
+//   "/password",
+//   async (
+//     req: Request<{}, {}, { userId: UUID; newPassword: string }>,
+//     res: Response,
+//     next: NextFunction
+//   ) => {
+//     const { userId, newPassword } = req.body;
+//     try {
+//       if (auth.has(userId)) {
+//         const updated = auth.get(userId) as Verified;
+//         if (updated) {
+//           auth.set(userId, { ...updated, password: newPassword });
+//         }
+//         res.json({ success: true });
+//       } else {
+//         throw "User does not exist.";
+//       }
+//     } catch (error) {
+//       res.status(500).json({ error });
+//     }
+//   }
+// );
+// userRouter.delete(
+//   "/",
+//   async (
+//     req: Request<{}, {}, { userId: UUID }>,
+//     res: Response,
+//     next: NextFunction
+//   ) => {
+//     const { userId } = req.body;
+//     try {
+//       const user = users.get(userId);
+//       if (user) {
+//         const { email } = user;
+//         auth.delete(userId);
+//         users.delete(userId);
+//         emailsToId.delete(email);
+//         families.delete(userId);
+//         const allCarpools = carpools.get(userId);
+//         if (allCarpools) {
+//           const carpoolIdsNotMadeByUser = allCarpools
+//             .filter((c) => c.createdBy.id !== userId)
+//             .map((c) => c.id);
+//           for (const cId of carpoolIdsNotMadeByUser) {
+//             const userIds = carpoolIdToUserId.get(cId);
+//             if (userIds) {
+//               for (const uId of userIds) {
+//                 const carpoolsOfUId = carpools.get(uId);
+//                 if (carpoolsOfUId) {
+//                   carpools.set(
+//                     uId,
+//                     carpoolsOfUId.map((c) => {
+//                       if (c.id === cId) {
+//                         const updated = {
+//                           ...c,
+//                           status: "Pending",
+//                         } as Carpool;
+//                         delete updated.driver;
+//                         return updated;
+//                       }
+//                       return c;
+//                     })
+//                   );
+//                 }
+//               }
+//             }
+//           }
+//           const allCarpoolIdsMadeByUser = allCarpools
+//             .filter((c) => c.createdBy.id === userId)
+//             .map((c) => c.id);
+//           for (const cId of allCarpoolIdsMadeByUser) {
+//             deleteACarpool(userId, cId);
+//           }
+//         }
+//         carpools.delete(userId);
+//         userIdToCarpoolId.delete(userId);
+//         const allFriends = friends.get(userId);
+//         if (allFriends) {
+//           for (const f of allFriends) {
+//             friends.set(
+//               f.id,
+//               (friends.get(f.id) || []).filter((f) => f.id !== userId)
+//             );
+//             friendRequests.set(
+//               f.id,
+//               (friendRequests.get(f.id) || []).filter(
+//                 (f) => f.sender.id !== userId && f.recipient.id !== userId
+//               )
+//             );
+//           }
+//         }
+//         friends.delete(userId);
+//         friendRequests.delete(userId);
+//         // TODO: delete user from groups
+//         res.json({ success: true });
+//       } else {
+//         throw "User does not exist.";
+//       }
+//     } catch (error) {
+//       res.status(500).json({ error });
+//     }
+//   }
+// );
 exports.default = userRouter;
