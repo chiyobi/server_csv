@@ -1,9 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.generateUUID = generateUUID;
 const express_1 = require("express");
-// import { v4 as uuidv4 } from "uuid";
-// import { friends, friendRequests, FriendProfile } from "./network";
-// import { families } from "./family";
+const uuid_1 = require("uuid");
 // import {
 //   carpoolIdToUserId,
 //   userIdToCarpoolId,
@@ -38,9 +37,9 @@ userRouter.get("/verify", async (req, res, next) => {
 // }
 // type Verified = { password: string; active: boolean };
 // type User = UserProfile & Verified;
-// export function generateUUID(): UUID {
-//   return uuidv4() as UUID;
-// }
+function generateUUID() {
+    return (0, uuid_1.v4)();
+}
 // const tempTokens = new Map<string, UserId>();
 // const auth = new Map<UserId, Verified>();
 // export const users = new Map<UserId, UserProfile>();
