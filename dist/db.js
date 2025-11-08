@@ -2,6 +2,7 @@
 // import { v4 as uuidv4 } from "uuid";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteACarpool = exports.savedTrips = exports.userIdToCarpoolId = exports.carpoolIdToUserId = exports.carpools = exports.groups = exports.userIdToGroupIds = exports.groupIdToUserIds = exports.friends = exports.friendRequests = exports.emailsToId = exports.users = exports.auth = exports.tempTokens = exports.families = void 0;
+exports.generateUUID = generateUUID;
 exports.families = new Map();
 exports.tempTokens = new Map();
 exports.auth = new Map();
@@ -16,9 +17,11 @@ exports.carpools = new Map();
 exports.carpoolIdToUserId = new Map();
 exports.userIdToCarpoolId = new Map();
 exports.savedTrips = new Map();
-// export function generateUUID() {
-//   return uuidv4();
-// }
+function generateUUID() {
+    // return uuidv4();
+    // return crypto.randomUUID();
+    // return '1';
+}
 const deleteACarpool = (userId, carpoolId) => {
     const allUserIdsOfCarpool = exports.carpoolIdToUserId.get(carpoolId);
     if (allUserIdsOfCarpool) {
