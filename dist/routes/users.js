@@ -1,17 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-// import { v4 as uuidv4 } from "uuid";
 const express_1 = require("express");
 const db_1 = require("../db");
-// import { friends, friendRequests, FriendProfile } from "./network";
-// import { families } from "./family";
-// import {
-//   carpoolIdToUserId,
-//   userIdToCarpoolId,
-//   carpools,
-//   deleteACarpool,
-//   Carpool,
-// } from "./carpool";
 const utils_1 = require("../utils");
 const userRouter = (0, express_1.Router)();
 userRouter.post("/signin", async (req, res, next) => {
