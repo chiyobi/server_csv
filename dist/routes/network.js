@@ -20,35 +20,6 @@ const express_1 = require("express");
 const db_1 = require("../db");
 const utils_1 = require("../utils");
 const networkRouter = (0, express_1.Router)();
-// export type FriendProfile = {
-//   id: UUID;
-//   firstname: string;
-//   lastname: string;
-//   username: string;
-//   email: string;
-//   phone: string;
-//   gender: string;
-//   birthday: string;
-//   company: string;
-//   linkedIn: string;
-// };
-// export type FriendRequest = {
-//   requestId: UUID;
-//   sender: FriendProfile;
-//   recipient: FriendProfile;
-// };
-// export type Group = {
-//   id: string;
-//   name: string;
-//   createdById: UUID;
-//   memberIds: UUID[];
-// };
-// type GroupId = UUID;
-// const groupIdToUserIds = new Map<GroupId, UserId[]>();
-// const userIdToGroupIds = new Map<UserId, GroupId[]>();
-// export const groups = new Map<GroupId, Group>();
-// export const friendRequests = new Map<UUID, FriendRequest[]>();
-// export const friends = new Map<UUID, FriendProfile[]>();
 // get all groups of user
 networkRouter.get("/groups", async (req, res, next) => {
     const data = [];
@@ -200,91 +171,56 @@ networkRouter.get("/friends/request", async (req, res, next) => {
 //     res.json({ success: true });
 //   }
 // );
-// type FriendRequestFormData = {
-//   userId: UUID;
-//   friendEmail: string;
-// };
-// const userDataToFriendProfile = (userData: UserProfile): FriendProfile => {
-//   return {
-//     id: userData.id,
-//     firstname: userData.firstname,
-//     lastname: userData.lastname,
-//     username: userData.username,
-//     email: userData.email,
-//     phone: userData.phone,
-//     gender: userData.gender,
-//     birthday: userData.birthday,
-//     company: userData.company,
-//     linkedIn: userData.linkedIn,
-//   };
-// };
-// // make a new friend request
-// networkRouter.post(
-//   "/friends/request",
-//   async (
-//     req: Request<{}, {}, FriendRequestFormData>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     try {
-//       const { userId, friendEmail } = req.body;
-//       const user = users.get(userId);
-//       if (user && user.email === friendEmail) {
-//         throw "Cannot send a friend request to yourself.";
-//       }
-//       if (!emailsToId.has(friendEmail)) {
-//         throw "Email does not match any user.";
-//       }
-//       const friendId = emailsToId.get(friendEmail) as UUID;
-//       if (!users.has(friendId)) {
-//         throw "User not found.";
-//       }
-//       // friend request already exists
-//       const currentFriendRequests = friendRequests.get(userId);
-//       if (currentFriendRequests) {
-//         const friendRequestItem = currentFriendRequests.filter(
-//           (fr) =>
-//             fr.sender.email === friendEmail ||
-//             fr.recipient.email === friendEmail
-//         )[0];
-//         if (friendRequestItem) {
-//           throw "Friend request was already sent.";
-//         }
-//       }
-//       // Email is already a friend
-//       const currentFriends = friends.get(userId);
-//       if (currentFriends) {
-//         const friendProfile = currentFriends.filter(
-//           (f) => f.email === friendEmail
-//         )[0];
-//         if (friendProfile) {
-//           throw "They are already a friend.";
-//         }
-//       }
-//       const requestId = generateUUID();
-//       const senderData = users.get(userId) as UserProfile;
-//       const sender = userDataToFriendProfile(senderData) as FriendProfile;
-//       const recipientData = users.get(friendId) as UserProfile;
-//       const recipient = userDataToFriendProfile(recipientData) as FriendProfile;
-//       const data: FriendRequest = {
-//         requestId,
-//         sender,
-//         recipient,
-//       };
-//       friendRequests.set(
-//         userId,
-//         (friendRequests.get(userId) || []).concat([data])
-//       );
-//       friendRequests.set(
-//         friendId,
-//         (friendRequests.get(friendId) || []).concat([data])
-//       );
-//       res.json({ success: true, data });
-//     } catch (error) {
-//       res.status(404).json({ error });
-//     }
-//   }
-// );
+// make a new friend request
+networkRouter.post("/friends/request", async (req, res, next) => {
+    try {
+        const { userId, friendEmail } = req.body;
+        const user = db_1.users.get(userId);
+        if (user && user.email === friendEmail) {
+            throw "Cannot send a friend request to yourself.";
+        }
+        if (!db_1.emailsToId.has(friendEmail)) {
+            throw "Email does not match any user.";
+        }
+        const friendId = db_1.emailsToId.get(friendEmail);
+        if (!db_1.users.has(friendId)) {
+            throw "User not found.";
+        }
+        // friend request already exists
+        const currentFriendRequests = db_1.friendRequests.get(userId);
+        if (currentFriendRequests) {
+            const friendRequestItem = currentFriendRequests.filter((fr) => fr.sender.email === friendEmail ||
+                fr.recipient.email === friendEmail)[0];
+            if (friendRequestItem) {
+                throw "Friend request was already sent.";
+            }
+        }
+        // Email is already a friend
+        const currentFriends = db_1.friends.get(userId);
+        if (currentFriends) {
+            const friendProfile = currentFriends.filter((f) => f.email === friendEmail)[0];
+            if (friendProfile) {
+                throw "They are already a friend.";
+            }
+        }
+        const requestId = (0, utils_1.generateUUID)();
+        const senderData = db_1.users.get(userId);
+        const sender = (0, db_1.userDataToFriendProfile)(senderData);
+        const recipientData = db_1.users.get(friendId);
+        const recipient = (0, db_1.userDataToFriendProfile)(recipientData);
+        const data = {
+            requestId,
+            sender,
+            recipient,
+        };
+        db_1.friendRequests.set(userId, (db_1.friendRequests.get(userId) || []).concat([data]));
+        db_1.friendRequests.set(friendId, (db_1.friendRequests.get(friendId) || []).concat([data]));
+        res.json({ success: true, data });
+    }
+    catch (error) {
+        res.status(404).json({ error });
+    }
+});
 // add a friend
 networkRouter.post("/friends", async (req, res, next) => {
     try {
