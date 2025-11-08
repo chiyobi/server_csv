@@ -75,102 +75,82 @@ networkRouter.get("/friends/request", async (req, res, next) => {
 });
 // TODO: refactor delete friend
 // delete a friend
-// networkRouter.delete(
-//   "/friends",
-//   async (
-//     req: Request<{}, {}, { id: UUID; idToDelete: UUID }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     try {
-//       const { id, idToDelete } = req.body;
-//       // delete all pending carpools from deleted friend, turn all confirmed carpools to pending
-//       const sharedCarpoolsWithFriend = getSharedCarpools(idToDelete);
-//       carpools.delete(idToDelete);
-//       const previouslyConfirmedCarpools = [];
-//       for (const c of sharedCarpoolsWithFriend) {
-//         if (c.status === "Pending") {
-//           carpoolIdToUserId.set(
-//             c.id,
-//             (carpoolIdToUserId.get(c.id) || []).filter(
-//               (uId) => uId !== idToDelete
-//             )
-//           );
-//         } else {
-//           previouslyConfirmedCarpools.push(c);
-//         }
-//       }
-//       const recipientEmails = [];
-//       const userEmail = users.get(id)?.email;
-//       if (userEmail) {
-//         recipientEmails.push(userEmail);
-//       }
-//       // convert confirmed to pending
-//       for (const c of previouslyConfirmedCarpools) {
-//         // get all creator ids of previously confirmed carpools
-//         c.status = "Pending";
-//         const creatorId = c.createdBy.id;
-//         const friendsOfCreator = friends.get(creatorId);
-//         if (friendsOfCreator?.length) {
-//           // use creator ids to get current friends and add carpools to their lists
-//           for (const f of friendsOfCreator) {
-//             recipientEmails.push(f.email);
-//             userIdToCarpoolId.set(f.id, [
-//               ...new Set(
-//                 (userIdToCarpoolId.get(f.id) || []).concat([c.id])
-//               ).values(),
-//             ]);
-//             carpools.set(f.id, [
-//               ...new Set((carpools.get(f.id) || []).concat([c])).values(),
-//             ]);
-//             carpoolIdToUserId.set(c.id, [
-//               ...new Set(
-//                 (carpoolIdToUserId.get(c.id) || []).concat([f.id])
-//               ).values(),
-//             ]);
-//           }
-//         }
-//       }
-//       // send emails
-//       try {
-//         for (const c of previouslyConfirmedCarpools) {
-//           await emailCarpoolStatusUpdate(recipientEmails, c);
-//         }
-//       } catch (e) {
-//         throw e;
-//       }
-//       // delete friend from groups
-//       const friendGroupIds = userIdToGroupIds.get(idToDelete);
-//       if (friendGroupIds?.length) {
-//         for (const gId of friendGroupIds) {
-//           groupIdToUserIds.set(
-//             gId,
-//             (groupIdToUserIds.get(gId) || []).filter(
-//               (uId) => uId !== idToDelete
-//             )
-//           );
-//           const g = groups.get(gId);
-//           if (g) {
-//             const updated = {
-//               ...g,
-//               memberIds: g.memberIds.filter((mId) => mId !== idToDelete),
-//             };
-//             groups.set(gId, updated);
-//           }
-//         }
-//       }
-//       userIdToGroupIds.delete(idToDelete);
-//       const userFriends = friends.get(id);
-//       const updated = userFriends?.filter(
-//         ({ id: friendId }) => friendId !== idToDelete
-//       ) as UserProfile[];
-//       friends.set(id, updated);
-//     } catch (error) {
-//       res.status(404).json({ error });
-//     }
-//     res.json({ success: true });
-//   }
-// );
+networkRouter.delete("/friends", async (req, res, next) => {
+    try {
+        const { id, idToDelete } = req.body;
+        // delete all pending carpools from deleted friend, turn all confirmed carpools to pending
+        const sharedCarpoolsWithFriend = (0, db_1.getSharedCarpools)(idToDelete);
+        db_1.carpools.delete(idToDelete);
+        const previouslyConfirmedCarpools = [];
+        for (const c of sharedCarpoolsWithFriend) {
+            if (c.status === "Pending") {
+                db_1.carpoolIdToUserId.set(c.id, (db_1.carpoolIdToUserId.get(c.id) || []).filter((uId) => uId !== idToDelete));
+            }
+            else {
+                previouslyConfirmedCarpools.push(c);
+            }
+        }
+        const recipientEmails = [];
+        const userEmail = db_1.users.get(id)?.email;
+        if (userEmail) {
+            recipientEmails.push(userEmail);
+        }
+        // convert confirmed to pending
+        for (const c of previouslyConfirmedCarpools) {
+            // get all creator ids of previously confirmed carpools
+            c.status = "Pending";
+            const creatorId = c.createdBy.id;
+            const friendsOfCreator = db_1.friends.get(creatorId);
+            if (friendsOfCreator?.length) {
+                // use creator ids to get current friends and add carpools to their lists
+                for (const f of friendsOfCreator) {
+                    recipientEmails.push(f.email);
+                    db_1.userIdToCarpoolId.set(f.id, [
+                        ...new Set((db_1.userIdToCarpoolId.get(f.id) || []).concat([c.id])).values(),
+                    ]);
+                    db_1.carpools.set(f.id, [
+                        ...new Set((db_1.carpools.get(f.id) || []).concat([c])).values(),
+                    ]);
+                    db_1.carpoolIdToUserId.set(c.id, [
+                        ...new Set((db_1.carpoolIdToUserId.get(c.id) || []).concat([f.id])).values(),
+                    ]);
+                }
+            }
+        }
+        // send emails
+        try {
+            for (const c of previouslyConfirmedCarpools) {
+                await (0, utils_1.emailCarpoolStatusUpdate)(recipientEmails, c);
+            }
+        }
+        catch (e) {
+            throw e;
+        }
+        // delete friend from groups
+        const friendGroupIds = db_1.userIdToGroupIds.get(idToDelete);
+        if (friendGroupIds?.length) {
+            for (const gId of friendGroupIds) {
+                db_1.groupIdToUserIds.set(gId, (db_1.groupIdToUserIds.get(gId) || []).filter((uId) => uId !== idToDelete));
+                const g = db_1.groups.get(gId);
+                if (g) {
+                    const updated = {
+                        ...g,
+                        memberIds: g.memberIds.filter((mId) => mId !== idToDelete),
+                    };
+                    db_1.groups.set(gId, updated);
+                }
+            }
+        }
+        db_1.userIdToGroupIds.delete(idToDelete);
+        const userFriends = db_1.friends.get(id);
+        const updated = userFriends?.filter(({ id: friendId }) => friendId !== idToDelete);
+        db_1.friends.set(id, updated);
+    }
+    catch (error) {
+        res.status(404).json({ error });
+    }
+    res.json({ success: true });
+});
 // make a new friend request
 networkRouter.post("/friends/request", async (req, res, next) => {
     try {
@@ -292,7 +272,7 @@ networkRouter.delete("/groups", async (req, res, next) => {
         res.status(500).json({ error });
     }
 });
-// // delete friend request
+// delete friend request
 networkRouter.delete("/friends/request", async (req, res, next) => {
     try {
         const { requestId, senderId, recipientId } = req.body;

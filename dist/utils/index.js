@@ -3,11 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendConfirmationEmail = exports.getRandom128CharString = void 0;
+exports.emailCarpoolStatusUpdate = exports.sendConfirmationEmail = exports.getRandom128CharString = void 0;
 exports.generateUUID = generateUUID;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const crypto_1 = __importDefault(require("crypto"));
-// // import { Carpool } from "../db";
 function generateUUID() {
     return crypto_1.default.randomUUID();
 }
@@ -64,88 +63,77 @@ const formatTimeString = (time) => {
     });
     return formattedTime;
 };
-// export const emailCarpoolStatusUpdate = async (
-//   recipientEmails: string[],
-//   update: Carpool
-// ) => {
-//   const transporter = nodemailer.createTransport({
-//     service: "Gmail",
-//     auth: {
-//       user: process.env.SMTP_USER,
-//       pass: process.env.SMTP_PASS,
-//     },
-//   });
-//   const {
-//     createdBy,
-//     status,
-//     purpose,
-//     passengers,
-//     date,
-//     time,
-//     from,
-//     to,
-//     notes,
-//     driver,
-//   } = update;
-//   const mailData = {
-//     from: process.env.SMTP_USER,
-//     to: recipientEmails.join(", "),
-//     subject: "",
-//     html: "",
-//   };
-//   const creatorName = `${createdBy.firstname} ${createdBy.lastname}`;
-//   if (status === "Pending") {
-//     mailData.subject = `${createdBy.firstname} has requested your help!`;
-//     mailData.html = `
-//     <div>
-//     <h3>${creatorName} needs a driver</h3>
-//     <h4>The details:</h4>
-//     <p>Purpose: ${purpose}</p>
-//     <p>Passengers: ${passengers.join(", ")}</p>
-//     <p>Date: ${formatDateString(date)}</p>
-//     <p>Time: ${formatTimeString(time)}</p>
-//     <p>Pickup at: ${from}</p>
-//     <p>Dropoff at: ${to}</p>
-//     <p>Notes: ${notes || `no notes from ${createdBy.firstname}`}</p>
-//     <p>Status: Waiting for a driver to accept</p>
-//     </div>
-//     `;
-//   } else {
-//     mailData.subject = `${createdBy.firstname}'s carpool request status has changed!`;
-//     const driverName = `${driver?.firstname} ${driver?.lastname}`;
-//     if (status === "Confirmed") {
-//       mailData.html = `
-//       <div>
-//       <h3>${driverName} has volunteered to drive</h3>
-//       <h4>The details:</h4>
-//       <p>Driver: ${driverName}</p>
-//       <p>Purpose: ${purpose}</p>
-//       <p>Passengers: ${passengers.join(", ")}</p>
-//       <p>Date: ${formatDateString(date)}</p>
-//       <p>Time: ${formatTimeString(time)}</p>
-//       <p>Pickup at: ${from}</p>
-//       <p>Dropoff at: ${to}</p>
-//       <p>Notes: ${notes || `no notes from ${createdBy.firstname}`}</p>
-//       <p>Status: ${status}</p>
-//       </div>
-//       `;
-//     } else {
-//       mailData.html = `
-//       <div>
-//       <h3>${creatorName}'s carpool request is now ${status}</h3>
-//       <h4>The details:</h4>
-//       <p>Driver: ${driverName}</p>
-//       <p>Purpose: ${purpose}</p>
-//       <p>Passengers: ${passengers.join(", ")}</p>
-//       <p>Date: ${formatDateString(date)}</p>
-//       <p>Time: ${formatTimeString(time)}</p>
-//       <p>Pickup at: ${from}</p>
-//       <p>Dropoff at: ${to}</p>
-//       <p>Notes: ${notes || `no notes from ${createdBy.firstname}`}</p>
-//       <p>Status: ${status}</p>
-//       </div>
-//       `;
-//     }
-//   }
-//   return transporter.sendMail(mailData);
-// };
+const emailCarpoolStatusUpdate = async (recipientEmails, update) => {
+    const transporter = nodemailer_1.default.createTransport({
+        service: "Gmail",
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+        },
+    });
+    const { createdBy, status, purpose, passengers, date, time, from, to, notes, driver, } = update;
+    const mailData = {
+        from: process.env.SMTP_USER,
+        to: recipientEmails.join(", "),
+        subject: "",
+        html: "",
+    };
+    const creatorName = `${createdBy.firstname} ${createdBy.lastname}`;
+    if (status === "Pending") {
+        mailData.subject = `${createdBy.firstname} has requested your help!`;
+        mailData.html = `
+    <div>
+    <h3>${creatorName} needs a driver</h3>
+    <h4>The details:</h4>
+    <p>Purpose: ${purpose}</p>
+    <p>Passengers: ${passengers.join(", ")}</p>
+    <p>Date: ${formatDateString(date)}</p>
+    <p>Time: ${formatTimeString(time)}</p>
+    <p>Pickup at: ${from}</p>
+    <p>Dropoff at: ${to}</p>
+    <p>Notes: ${notes || `no notes from ${createdBy.firstname}`}</p>
+    <p>Status: Waiting for a driver to accept</p>
+    </div>
+    `;
+    }
+    else {
+        mailData.subject = `${createdBy.firstname}'s carpool request status has changed!`;
+        const driverName = `${driver?.firstname} ${driver?.lastname}`;
+        if (status === "Confirmed") {
+            mailData.html = `
+      <div>
+      <h3>${driverName} has volunteered to drive</h3>
+      <h4>The details:</h4>
+      <p>Driver: ${driverName}</p>
+      <p>Purpose: ${purpose}</p>
+      <p>Passengers: ${passengers.join(", ")}</p>
+      <p>Date: ${formatDateString(date)}</p>
+      <p>Time: ${formatTimeString(time)}</p>
+      <p>Pickup at: ${from}</p>
+      <p>Dropoff at: ${to}</p>
+      <p>Notes: ${notes || `no notes from ${createdBy.firstname}`}</p>
+      <p>Status: ${status}</p>
+      </div>
+      `;
+        }
+        else {
+            mailData.html = `
+      <div>
+      <h3>${creatorName}'s carpool request is now ${status}</h3>
+      <h4>The details:</h4>
+      <p>Driver: ${driverName}</p>
+      <p>Purpose: ${purpose}</p>
+      <p>Passengers: ${passengers.join(", ")}</p>
+      <p>Date: ${formatDateString(date)}</p>
+      <p>Time: ${formatTimeString(time)}</p>
+      <p>Pickup at: ${from}</p>
+      <p>Dropoff at: ${to}</p>
+      <p>Notes: ${notes || `no notes from ${createdBy.firstname}`}</p>
+      <p>Status: ${status}</p>
+      </div>
+      `;
+        }
+    }
+    return transporter.sendMail(mailData);
+};
+exports.emailCarpoolStatusUpdate = emailCarpoolStatusUpdate;
