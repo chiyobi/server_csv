@@ -21,6 +21,8 @@ app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 });
 
 // Start server
-app.listen(PORT, () => {
-  console.log(`✅ Server running at http://localhost:${PORT}`);
-});
+// app.listen(PORT, () => {
+//   console.log(`✅ Server running at http://localhost:${PORT}`);
+// });
+
+module.exports = app;
