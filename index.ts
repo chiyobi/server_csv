@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 // Routes
-// app.use("/", router);
+app.use("/", router);
 
 // Error handler
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
