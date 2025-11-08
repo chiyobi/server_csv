@@ -128,85 +128,69 @@ userRouter.put("/password", async (req, res, next) => {
         res.status(500).json({ error });
     }
 });
-// userRouter.delete(
-//   "/",
-//   async (
-//     req: Request<{}, {}, { userId: UUID }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const { userId } = req.body;
-//     try {
-//       const user = users.get(userId);
-//       if (user) {
-//         const { email } = user;
-//         auth.delete(userId);
-//         users.delete(userId);
-//         emailsToId.delete(email);
-//         families.delete(userId);
-//         const allCarpools = carpools.get(userId);
-//         if (allCarpools) {
-//           const carpoolIdsNotMadeByUser = allCarpools
-//             .filter((c) => c.createdBy.id !== userId)
-//             .map((c) => c.id);
-//           for (const cId of carpoolIdsNotMadeByUser) {
-//             const userIds = carpoolIdToUserId.get(cId);
-//             if (userIds) {
-//               for (const uId of userIds) {
-//                 const carpoolsOfUId = carpools.get(uId);
-//                 if (carpoolsOfUId) {
-//                   carpools.set(
-//                     uId,
-//                     carpoolsOfUId.map((c) => {
-//                       if (c.id === cId) {
-//                         const updated = {
-//                           ...c,
-//                           status: "Pending",
-//                         } as Carpool;
-//                         delete updated.driver;
-//                         return updated;
-//                       }
-//                       return c;
-//                     })
-//                   );
-//                 }
-//               }
-//             }
-//           }
-//           const allCarpoolIdsMadeByUser = allCarpools
-//             .filter((c) => c.createdBy.id === userId)
-//             .map((c) => c.id);
-//           for (const cId of allCarpoolIdsMadeByUser) {
-//             deleteACarpool(userId, cId);
-//           }
-//         }
-//         carpools.delete(userId);
-//         userIdToCarpoolId.delete(userId);
-//         const allFriends = friends.get(userId);
-//         if (allFriends) {
-//           for (const f of allFriends) {
-//             friends.set(
-//               f.id,
-//               (friends.get(f.id) || []).filter((f) => f.id !== userId)
-//             );
-//             friendRequests.set(
-//               f.id,
-//               (friendRequests.get(f.id) || []).filter(
-//                 (f) => f.sender.id !== userId && f.recipient.id !== userId
-//               )
-//             );
-//           }
-//         }
-//         friends.delete(userId);
-//         friendRequests.delete(userId);
-//         // TODO: delete user from groups
-//         res.json({ success: true });
-//       } else {
-//         throw "User does not exist.";
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
+userRouter.delete("/", async (req, res, next) => {
+    const { userId } = req.body;
+    try {
+        const user = db_1.users.get(userId);
+        if (user) {
+            const { email } = user;
+            db_1.auth.delete(userId);
+            db_1.users.delete(userId);
+            db_1.emailsToId.delete(email);
+            db_1.families.delete(userId);
+            const allCarpools = db_1.carpools.get(userId);
+            if (allCarpools) {
+                const carpoolIdsNotMadeByUser = allCarpools
+                    .filter((c) => c.createdBy.id !== userId)
+                    .map((c) => c.id);
+                for (const cId of carpoolIdsNotMadeByUser) {
+                    const userIds = db_1.carpoolIdToUserId.get(cId);
+                    if (userIds) {
+                        for (const uId of userIds) {
+                            const carpoolsOfUId = db_1.carpools.get(uId);
+                            if (carpoolsOfUId) {
+                                db_1.carpools.set(uId, carpoolsOfUId.map((c) => {
+                                    if (c.id === cId) {
+                                        const updated = {
+                                            ...c,
+                                            status: "Pending",
+                                        };
+                                        delete updated.driver;
+                                        return updated;
+                                    }
+                                    return c;
+                                }));
+                            }
+                        }
+                    }
+                }
+                const allCarpoolIdsMadeByUser = allCarpools
+                    .filter((c) => c.createdBy.id === userId)
+                    .map((c) => c.id);
+                for (const cId of allCarpoolIdsMadeByUser) {
+                    (0, db_1.deleteACarpool)(userId, cId);
+                }
+            }
+            db_1.carpools.delete(userId);
+            db_1.userIdToCarpoolId.delete(userId);
+            const allFriends = db_1.friends.get(userId);
+            if (allFriends) {
+                for (const f of allFriends) {
+                    db_1.friends.set(f.id, (db_1.friends.get(f.id) || []).filter((f) => f.id !== userId));
+                    db_1.friendRequests.set(f.id, (db_1.friendRequests.get(f.id) || []).filter((f) => f.sender.id !== userId && f.recipient.id !== userId));
+                }
+            }
+            db_1.friends.delete(userId);
+            db_1.friendRequests.delete(userId);
+            // TODO: delete user from groups
+            res.json({ success: true });
+        }
+        else {
+            throw "User does not exist.";
+        }
+    }
+    catch (error) {
+        res.status(500).json({ error });
+    }
+});
 exports.default = userRouter;
