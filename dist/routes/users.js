@@ -72,21 +72,20 @@ userRouter.post("/new", async (req, res, next) => {
         // }
         // const code = getRandom128CharString();
         // tempTokens.set(code, id);
-        try {
-            //   await sendConfirmationEmail(email, code);
-            //   emailsToId.set(email, id);
-            //   auth.set(id, { password, active: false });
-            //   const userData = {
-            //     id,
-            //     email,
-            //     firstname: req.body.firstname,
-            //     lastname: req.body.lastname,
-            //   };
-            //   users.set(id, userData as UserProfile);
-        }
-        catch (e) {
-            throw "Not a valid email.";
-        }
+        // try {
+        //   await sendConfirmationEmail(email, code);
+        //   emailsToId.set(email, id);
+        //   auth.set(id, { password, active: false });
+        //   const userData = {
+        //     id,
+        //     email,
+        //     firstname: req.body.firstname,
+        //     lastname: req.body.lastname,
+        //   };
+        //   users.set(id, userData as UserProfile);
+        // } catch (e) {
+        //   throw "Not a valid email.";
+        // }
         res.json({ success: true });
     }
     catch (error) {
