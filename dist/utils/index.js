@@ -25,6 +25,8 @@ function generateRandomString(length) {
 const getRandom128CharString = () => generateRandomString(128);
 exports.getRandom128CharString = getRandom128CharString;
 const sendConfirmationEmail = async (recipientEmail, tempCode) => {
+    console.log("recipientEmail", recipientEmail);
+    console.log("tempCode", tempCode);
     const transporter = nodemailer_1.default.createTransport({
         service: "Gmail",
         auth: {
@@ -42,7 +44,7 @@ const sendConfirmationEmail = async (recipientEmail, tempCode) => {
       <a style="font-size: 32px; font-weight: 600; text-decoration: none !important;" href="http://192.168.0.17:3000/api/user/verify?code=${tempCode}">Verify</a>
     </p>`,
     };
-    return transporter.sendMail(mailData);
+    return await transporter.sendMail(mailData);
 };
 exports.sendConfirmationEmail = sendConfirmationEmail;
 const formatDateString = (date) => {

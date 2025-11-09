@@ -11,8 +11,8 @@ router.get("/", (req: Request, res: Response) => {
 });
 
 router.use("/api/user", userRouter);
-// router.use("/api/network", networkRouter);
-// router.use("/api/family", familyRouter);
-// router.use("/api/carpool", carpoolRouter);
+router.use("/api/network", networkRouter);
+router.use("/api/family", familyRouter);
+router.use("/api/carpool", carpoolRouter);
 
 export default router;

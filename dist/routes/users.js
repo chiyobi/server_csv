@@ -57,14 +57,20 @@ userRouter.get("/verify", async (req, res, next) => {
 userRouter.post("/new", async (req, res, next) => {
     const { email, password } = req.body;
     const id = (0, utils_1.generateUUID)();
+    console.log("req.body", req.body, 'id', id);
     try {
+        console.log("1");
         if (db_1.emailsToId.has(email)) {
             throw "Email already exists. Use a different email.";
         }
         const code = (0, utils_1.getRandom128CharString)();
+        console.log("2", code);
         db_1.tempTokens.set(code, id);
+        console.log("3", db_1.tempTokens);
         try {
-            await (0, utils_1.sendConfirmationEmail)(email, code);
+            console.log("4:", utils_1.sendConfirmationEmail);
+            const info = await (0, utils_1.sendConfirmationEmail)(email, code);
+            console.log("info:", info);
             db_1.emailsToId.set(email, id);
             db_1.auth.set(id, { password, active: false });
             const userData = {

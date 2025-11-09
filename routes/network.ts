@@ -1,56 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express";
-import {
-  UUID,
-  users,
-  emailsToId,
-  UserProfile as User,
-  generateUUID,
-  UserProfile,
-  UserId,
-} from "./users";
-import {
-  carpoolIdToUserId,
-  carpools,
-  getSharedCarpools,
-  userIdToCarpoolId,
-} from "./carpool";
-import { emailCarpoolStatusUpdate } from "../utils";
+import {UUID, carpools, userIdToCarpoolId, carpoolIdToUserId, User, Group, groupIdToUserIds, groups, userIdToGroupIds, FriendProfile, friends, users, UserProfile, FriendRequest, friendRequests, userDataToFriendProfile, emailsToId, FriendRequestFormData, getSharedCarpools } from '../db';
+import { generateUUID,  emailCarpoolStatusUpdate } from "../utils";
 
 const networkRouter = Router();
-
-export type FriendProfile = {
-  id: UUID;
-  firstname: string;
-  lastname: string;
-  username: string;
-  email: string;
-  phone: string;
-  gender: string;
-  birthday: string;
-  company: string;
-  linkedIn: string;
-};
-
-export type FriendRequest = {
-  requestId: UUID;
-  sender: FriendProfile;
-  recipient: FriendProfile;
-};
-
-export type Group = {
-  id: string;
-  name: string;
-  createdById: UUID;
-  memberIds: UUID[];
-};
-
-type GroupId = UUID;
-const groupIdToUserIds = new Map<GroupId, UserId[]>();
-const userIdToGroupIds = new Map<UserId, GroupId[]>();
-export const groups = new Map<GroupId, Group>();
-
-export const friendRequests = new Map<UUID, FriendRequest[]>();
-export const friends = new Map<UUID, FriendProfile[]>();
 
 // get all groups of user
 networkRouter.get(
@@ -240,26 +192,6 @@ networkRouter.delete(
   }
 );
 
-type FriendRequestFormData = {
-  userId: UUID;
-  friendEmail: string;
-};
-
-const userDataToFriendProfile = (userData: UserProfile): FriendProfile => {
-  return {
-    id: userData.id,
-    firstname: userData.firstname,
-    lastname: userData.lastname,
-    username: userData.username,
-    email: userData.email,
-    phone: userData.phone,
-    gender: userData.gender,
-    birthday: userData.birthday,
-    company: userData.company,
-    linkedIn: userData.linkedIn,
-  };
-};
-
 // make a new friend request
 networkRouter.post(
   "/friends/request",
@@ -309,7 +241,7 @@ networkRouter.post(
         }
       }
 
-      const requestId = generateUUID();
+      const requestId = generateUUID() as UUID;
 
       const senderData = users.get(userId) as UserProfile;
       const sender = userDataToFriendProfile(senderData) as FriendProfile;
@@ -402,7 +334,7 @@ networkRouter.post(
       const { group } = req.body;
       const { createdById, memberIds } = group;
 
-      const groupId = generateUUID();
+      const groupId = generateUUID() as UUID;
       const newGroup = {
         ...group,
         id: groupId,

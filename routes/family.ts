@@ -1,15 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { UUID, generateUUID } from "./users";
+import { UUID, FamilyMember, families } from "../db";
+import { generateUUID } from "../utils";
 
 const familyRouter = Router();
-
-export type FamilyMember = {
-  id: UUID;
-  firstname: string;
-  lastname: string;
-}
-
-export const families = new Map<UUID, FamilyMember[]>();
 
 // get all family of user
 familyRouter.get('/', async (req: Request<{}, {}, {}, {userId: UUID}>, res: Response, next: NextFunction) => {
@@ -66,7 +59,7 @@ familyRouter.post('/', async (req: Request<{}, {}, {userId: UUID, familyMember: 
     const userFamily = families.get(userId) as FamilyMember[];
     const newMember = {
       ...familyMember,
-      id: generateUUID()
+      id: generateUUID() as UUID
     }
 
     families.set(userId, userFamily.concat([newMember]));

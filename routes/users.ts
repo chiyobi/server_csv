@@ -1,296 +1,261 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { v4 as uuidv4 } from "uuid";
-import { friends, friendRequests, FriendProfile } from "./network";
-import { families } from "./family";
-import {
-  carpoolIdToUserId,
-  userIdToCarpoolId,
-  carpools,
-  deleteACarpool,
-  Carpool,
-} from "./carpool";
-import { getRandom128CharString, sendConfirmationEmail } from "../utils";
+import { User, UserProfile, emailsToId, auth, users, friends, friendRequests, families, tempTokens, UUID, Verified, carpools, carpoolIdToUserId, userIdToCarpoolId, Carpool, deleteACarpool } from '../db';
+import { 
+  getRandom128CharString, 
+  generateUUID, 
+  sendConfirmationEmail
+ } from "../utils";
 
 const userRouter = Router();
 
-export type UUID = string & { readonly brand: unique symbol };
-export type UserId = UUID;
+userRouter.post(
+  "/signin",
+  async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
+    const { email, password } = req.body;
 
-export interface UserProfile {
-  id: UserId;
-  firstname: string;
-  lastname: string;
-  email: string;
-  username: string;
-  phone: string;
-  gender: string;
-  birthday: string;
-  company: string;
-  linkedIn: string;
-  emergencyContactName: string;
-  emergencyContactPhone: string;
-  friends: UserProfile[];
-  friendRequests: {
-    requestId: UUID;
-    sender: FriendProfile;
-    recipient: FriendProfile;
-  };
-}
+    try {
+      if (!emailsToId.has(email)) {
+        throw "No account with this email.";
+      }
 
-type Verified = { password: string; active: boolean };
-type User = UserProfile & Verified;
+      const id = emailsToId.get(email);
+      if (!id || auth.get(id)?.active === false) {
+        throw "Account not verified.";
+      }
 
-export function generateUUID(): UUID {
-  return uuidv4() as UUID;
-}
+      if (!id || !users.has(id) || auth.get(id)?.password !== password) {
+        throw "Invalid credentials.";
+      }
 
-const tempTokens = new Map<string, UserId>();
-const auth = new Map<UserId, Verified>();
-export const users = new Map<UserId, UserProfile>();
-export const emailsToId = new Map<string, UserId>();
+      if (!friends.has(id)) {
+        friends.set(id, []);
+      }
 
-// userRouter.post(
-//   "/signin",
-//   async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
-//     const { email, password } = req.body;
+      if (!friendRequests.has(id)) {
+        friendRequests.set(id, []);
+      }
 
-//     try {
-//       if (!emailsToId.has(email)) {
-//         throw "No account with this email.";
-//       }
+      const userFriends = friends.get(id)?.slice();
+      const userFriendRequests = friendRequests.get(id)?.slice();
 
-//       const id = emailsToId.get(email);
-//       if (!id || auth.get(id)?.active === false) {
-//         throw "Account not verified.";
-//       }
+      if (!families.has(id)) {
+        families.set(id, []);
+      }
 
-//       if (!id || !users.has(id) || auth.get(id)?.password !== password) {
-//         throw "Invalid credentials.";
-//       }
+      const data = {
+        user: {
+          ...users.get(id),
+        },
+        network: {
+          friends: userFriends,
+          friendRequests: userFriendRequests,
+        },
+        family: families.get(id)?.slice(),
+      };
 
-//       if (!friends.has(id)) {
-//         friends.set(id, []);
-//       }
+      res.json({ success: true, data });
+    } catch (error) {
+      res.status(404).json({ error });
+    }
+  }
+);
 
-//       if (!friendRequests.has(id)) {
-//         friendRequests.set(id, []);
-//       }
+userRouter.get(
+  "/verify",
+  async (
+    req: Request<{}, {}, {}, { code: string }>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { code } = req.query;
+    if (tempTokens.has(code)) {
+      const userId = tempTokens.get(code) as UUID;
+      const authStatus = auth.get(userId) as Verified;
+      auth.set(userId, { ...authStatus, active: true });
+      tempTokens.delete(code);
+    }
+    res.redirect("https://hello.goodloop.us");
+  }
+);
 
-//       const userFriends = friends.get(id)?.slice();
-//       const userFriendRequests = friendRequests.get(id)?.slice();
+userRouter.post(
+  "/new",
+  async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
+    const { email, password } = req.body as User;
+    const id = generateUUID() as UUID;
 
-//       if (!families.has(id)) {
-//         families.set(id, []);
-//       }
+    console.log("req.body", req.body, 'id', id);
 
-//       const data = {
-//         user: {
-//           ...users.get(id),
-//         },
-//         network: {
-//           friends: userFriends,
-//           friendRequests: userFriendRequests,
-//         },
-//         family: families.get(id)?.slice(),
-//       };
+    try {
+      console.log("1");
+      if (emailsToId.has(email)) {
+        throw "Email already exists. Use a different email.";
+      }
 
-//       res.json({ success: true, data });
-//     } catch (error) {
-//       res.status(404).json({ error });
-//     }
-//   }
-// );
+      const code = getRandom128CharString();
+      console.log("2", code);
+      tempTokens.set(code, id);
+      console.log("3", tempTokens);
 
-// userRouter.get(
-//   "/verify",
-//   async (
-//     req: Request<{}, {}, {}, { code: string }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const { code } = req.query;
-//     if (tempTokens.has(code)) {
-//       const userId = tempTokens.get(code) as UUID;
-//       const authStatus = auth.get(userId) as Verified;
-//       auth.set(userId, { ...authStatus, active: true });
-//       tempTokens.delete(code);
-//     }
-//     res.redirect("https://hello.goodloop.us");
-//   }
-// );
+      try {
+        console.log("4:", sendConfirmationEmail);
+        const info = await sendConfirmationEmail(email, code);
+        console.log("info:", info);
+        emailsToId.set(email, id);
+        auth.set(id, { password, active: false });
 
-// userRouter.post(
-//   "/new",
-//   async (req: Request<{}, {}, User>, res: Response, next: NextFunction) => {
-//     const { email, password } = req.body as User;
-//     const id = generateUUID();
+        const userData = {
+          id,
+          email,
+          firstname: req.body.firstname,
+          lastname: req.body.lastname,
+        };
+        users.set(id, userData as UserProfile);
+      } catch (e) {
+        throw "Not a valid email.";
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error });
+    }
+});
 
-//     try {
-//       if (emailsToId.has(email)) {
-//         throw "Email already exists. Use a different email.";
-//       }
+userRouter.put(
+  "/",
+  async (
+    req: Request<{}, {}, UserProfile>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { id } = req.body;
 
-//       const code = getRandom128CharString();
-//       tempTokens.set(code, id);
-//       try {
-//         const info = await sendConfirmationEmail(email, code);
-//         // console.log("info", info);
-//         emailsToId.set(email, id);
-//         auth.set(id, { password, active: false });
+    try {
+      if (users.has(id)) {
+        const updatedData = { ...users.get(id), ...req.body };
+        users.set(id, updatedData);
+        res.json({ success: true, data: updatedData });
+      } else {
+        throw "User no longer exists.";
+      }
+    } catch (error) {
+      res.status(500).json({ error });
+    }
+  }
+);
 
-//         const userData = {
-//           id,
-//           email,
-//           firstname: req.body.firstname,
-//           lastname: req.body.lastname,
-//         };
-//         users.set(id, userData as UserProfile);
-//         res.json({ success: true });
-//       } catch (e) {
-//         throw "Not a valid email.";
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
+userRouter.put(
+  "/password",
+  async (
+    req: Request<{}, {}, { userId: UUID; newPassword: string }>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { userId, newPassword } = req.body;
 
-// userRouter.put(
-//   "/",
-//   async (
-//     req: Request<{}, {}, UserProfile>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const { id } = req.body;
+    try {
+      if (auth.has(userId)) {
+        const updated = auth.get(userId) as Verified;
+        if (updated) {
+          auth.set(userId, { ...updated, password: newPassword });
+        }
+        res.json({ success: true });
+      } else {
+        throw "User does not exist.";
+      }
+    } catch (error) {
+      res.status(500).json({ error });
+    }
+  }
+);
 
-//     try {
-//       if (users.has(id)) {
-//         const updatedData = { ...users.get(id), ...req.body };
-//         users.set(id, updatedData);
-//         res.json({ success: true, data: updatedData });
-//       } else {
-//         throw "User no longer exists.";
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
+userRouter.delete(
+  "/",
+  async (
+    req: Request<{}, {}, { userId: UUID }>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    const { userId } = req.body;
 
-// userRouter.put(
-//   "/password",
-//   async (
-//     req: Request<{}, {}, { userId: UUID; newPassword: string }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const { userId, newPassword } = req.body;
+    try {
+      const user = users.get(userId);
+      if (user) {
+        const { email } = user;
+        auth.delete(userId);
+        users.delete(userId);
+        emailsToId.delete(email);
+        families.delete(userId);
 
-//     try {
-//       if (auth.has(userId)) {
-//         const updated = auth.get(userId) as Verified;
-//         if (updated) {
-//           auth.set(userId, { ...updated, password: newPassword });
-//         }
-//         res.json({ success: true });
-//       } else {
-//         throw "User does not exist.";
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
+        const allCarpools = carpools.get(userId);
+        if (allCarpools) {
+          const carpoolIdsNotMadeByUser = allCarpools
+            .filter((c) => c.createdBy.id !== userId)
+            .map((c) => c.id);
+          for (const cId of carpoolIdsNotMadeByUser) {
+            const userIds = carpoolIdToUserId.get(cId);
+            if (userIds) {
+              for (const uId of userIds) {
+                const carpoolsOfUId = carpools.get(uId);
+                if (carpoolsOfUId) {
+                  carpools.set(
+                    uId,
+                    carpoolsOfUId.map((c) => {
+                      if (c.id === cId) {
+                        const updated = {
+                          ...c,
+                          status: "Pending",
+                        } as Carpool;
+                        delete updated.driver;
+                        return updated;
+                      }
+                      return c;
+                    })
+                  );
+                }
+              }
+            }
+          }
 
-// userRouter.delete(
-//   "/",
-//   async (
-//     req: Request<{}, {}, { userId: UUID }>,
-//     res: Response,
-//     next: NextFunction
-//   ) => {
-//     const { userId } = req.body;
+          const allCarpoolIdsMadeByUser = allCarpools
+            .filter((c) => c.createdBy.id === userId)
+            .map((c) => c.id);
+          for (const cId of allCarpoolIdsMadeByUser) {
+            deleteACarpool(userId, cId);
+          }
+        }
 
-//     try {
-//       const user = users.get(userId);
-//       if (user) {
-//         const { email } = user;
-//         auth.delete(userId);
-//         users.delete(userId);
-//         emailsToId.delete(email);
-//         families.delete(userId);
+        carpools.delete(userId);
+        userIdToCarpoolId.delete(userId);
 
-//         const allCarpools = carpools.get(userId);
-//         if (allCarpools) {
-//           const carpoolIdsNotMadeByUser = allCarpools
-//             .filter((c) => c.createdBy.id !== userId)
-//             .map((c) => c.id);
-//           for (const cId of carpoolIdsNotMadeByUser) {
-//             const userIds = carpoolIdToUserId.get(cId);
-//             if (userIds) {
-//               for (const uId of userIds) {
-//                 const carpoolsOfUId = carpools.get(uId);
-//                 if (carpoolsOfUId) {
-//                   carpools.set(
-//                     uId,
-//                     carpoolsOfUId.map((c) => {
-//                       if (c.id === cId) {
-//                         const updated = {
-//                           ...c,
-//                           status: "Pending",
-//                         } as Carpool;
-//                         delete updated.driver;
-//                         return updated;
-//                       }
-//                       return c;
-//                     })
-//                   );
-//                 }
-//               }
-//             }
-//           }
+        const allFriends = friends.get(userId);
+        if (allFriends) {
+          for (const f of allFriends) {
+            friends.set(
+              f.id,
+              (friends.get(f.id) || []).filter((f) => f.id !== userId)
+            );
+            friendRequests.set(
+              f.id,
+              (friendRequests.get(f.id) || []).filter(
+                (f) => f.sender.id !== userId && f.recipient.id !== userId
+              )
+            );
+          }
+        }
 
-//           const allCarpoolIdsMadeByUser = allCarpools
-//             .filter((c) => c.createdBy.id === userId)
-//             .map((c) => c.id);
-//           for (const cId of allCarpoolIdsMadeByUser) {
-//             deleteACarpool(userId, cId);
-//           }
-//         }
+        friends.delete(userId);
+        friendRequests.delete(userId);
 
-//         carpools.delete(userId);
-//         userIdToCarpoolId.delete(userId);
+        // TODO: delete user from groups
 
-//         const allFriends = friends.get(userId);
-//         if (allFriends) {
-//           for (const f of allFriends) {
-//             friends.set(
-//               f.id,
-//               (friends.get(f.id) || []).filter((f) => f.id !== userId)
-//             );
-//             friendRequests.set(
-//               f.id,
-//               (friendRequests.get(f.id) || []).filter(
-//                 (f) => f.sender.id !== userId && f.recipient.id !== userId
-//               )
-//             );
-//           }
-//         }
-
-//         friends.delete(userId);
-//         friendRequests.delete(userId);
-
-//         // TODO: delete user from groups
-
-//         res.json({ success: true });
-//       } else {
-//         throw "User does not exist.";
-//       }
-//     } catch (error) {
-//       res.status(500).json({ error });
-//     }
-//   }
-// );
+        res.json({ success: true });
+      } else {
+        throw "User does not exist.";
+      }
+    } catch (error) {
+      res.status(500).json({ error });
+    }
+  }
+);
 
 export default userRouter;

@@ -1,71 +1,8 @@
 import { Router, Request, Response, NextFunction } from "express";
-import { UUID, UserId, generateUUID, users } from "./users";
-import { FriendProfile, friends } from "./network";
-import { emailCarpoolStatusUpdate } from "../utils";
+import { UUID, UserId, users, carpools, Trip, Carpool, savedTrips, carpoolIdToUserId, userIdToCarpoolId, CarpoolId,  } from "../db";
+import { generateUUID, emailCarpoolStatusUpdate } from "../utils";
 
 const carpoolRouter = Router();
-
-type CarpoolStatus = "Pending" | "Confirmed" | "In Progress" | "Completed";
-type CarpoolId = UUID;
-type DriverProfile = {
-  id: UserId;
-  firstname: string;
-  lastname: string;
-};
-export type Carpool = {
-  id: CarpoolId;
-  purpose: string;
-  from: string;
-  to: string;
-  date: string;
-  time: string;
-  returnTrip: boolean;
-  passengers: string[];
-  notes: string;
-  status: CarpoolStatus;
-  driver?: DriverProfile;
-  createdBy: FriendProfile;
-};
-
-type Trip = {
-  id: UUID;
-  purpose: string;
-  from: string;
-  to: string;
-  passengers: string[];
-  notes: string;
-};
-
-export const carpools = new Map<UserId, Carpool[]>();
-export const carpoolIdToUserId = new Map<CarpoolId, UserId[]>();
-export const userIdToCarpoolId = new Map<UserId, CarpoolId[]>();
-
-const savedTrips = new Map<UserId, Trip[]>();
-
-export const getSharedCarpools = (userId: UserId) => {
-  // get all shared carpools with user
-  let shared: Carpool[] = [];
-  if (friends.has(userId)) {
-    const userFriends = friends.get(userId);
-
-    if (userFriends) {
-      const friendIds = userFriends.map((f) => f.id);
-      for (let friendId of friendIds) {
-        const friendCarpools = carpools.get(friendId);
-
-        // check each of friend's carpools. If id matches a friend's carpool, it is shared.
-        if (friendCarpools) {
-          const userCarpoolIds = new Set(userIdToCarpoolId.get(userId));
-          const sharedCarpools = friendCarpools.filter((c) =>
-            userCarpoolIds.has(c.id)
-          );
-          shared = shared.concat(sharedCarpools);
-        }
-      }
-    }
-  }
-  return shared;
-};
 
 // get all carpools of user and get all shared carpools with user
 carpoolRouter.get(
@@ -199,7 +136,7 @@ carpoolRouter.post(
         carpools.set(userId, []);
       }
       const userCarpools = carpools.get(userId)?.slice();
-      const carpoolId = generateUUID();
+      const carpoolId = generateUUID() as UUID;
       const carpool = {
         ...newCarpool,
         id: carpoolId,
@@ -250,7 +187,7 @@ carpoolRouter.post(
       const userTrips = savedTrips.get(userId)?.slice();
       const trip = {
         ...newTrip,
-        id: generateUUID(),
+        id: generateUUID() as UUID,
       };
       savedTrips.set(userId, userTrips?.concat([trip]) as Trip[]);
 
