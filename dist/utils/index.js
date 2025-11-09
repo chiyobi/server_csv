@@ -41,7 +41,7 @@ const sendConfirmationEmail = async (recipientEmail, tempCode) => {
         html: `<p>
       <h1>Thanks for joining the Goodloop family!</h1><br>
       Please verify your email by clicking the link below:<br><br>
-      <a style="font-size: 32px; font-weight: 600; text-decoration: none !important;" href="http://192.168.0.17:3000/api/user/verify?code=${tempCode}">Verify</a>
+      <a style="font-size: 32px; font-weight: 600; text-decoration: none !important;" href="${process.env.BASE_URL}/api/user/verify?code=${tempCode}">Verify</a>
     </p>`,
     };
     return await transporter.sendMail(mailData);
