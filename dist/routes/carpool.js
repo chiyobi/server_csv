@@ -34,6 +34,7 @@ carpoolRouter.get("/trip", async (req, res, next) => {
 });
 const deleteACarpool = (userId, carpoolId) => {
     const allUserIdsOfCarpool = db_1.carpoolIdToUserId.get(carpoolId);
+    console.log("userId", userId);
     if (allUserIdsOfCarpool) {
         for (const uId of allUserIdsOfCarpool) {
             const uCarpools = db_1.carpools.get(uId);
